@@ -10,6 +10,7 @@ import { Column, Entity, ManyToMany, OneToMany } from 'typeorm';
   orderBy: {
     id: 'DESC',
     name: 'ASC',
+    account: 'ASC',
   },
 })
 export class User extends BaseModel {
