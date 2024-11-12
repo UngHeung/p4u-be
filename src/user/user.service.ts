@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { SignUpDto } from 'src/auth/dto/signUp.dto';
 import { Repository } from 'typeorm';
 import { User } from './entity/user.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepository: Repository<User>) {}
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
 
   async getUserById(id: number) {
     const user = await this.userRepository
