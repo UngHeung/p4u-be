@@ -4,6 +4,5 @@ import { Card } from '../entity/card.entity';
 export class CreateCardDto extends PickType(Card, [
   'title',
   'content',
-  'writer',
   'tags',
 ]) {}
