@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateTagDto } from './dto/create-tag.dto';
@@ -15,14 +15,13 @@ export class TagService {
 
   async getTagByKeyword(keyword: string): Promise<Tag> {
     const tag = await this.tagRepository
-      .createQueryBuilder()
+      .createQueryBuilder('tag')
       .where('keyword = :keyword', { keyword })
       .select(['tag.id', 'tag.keyword'])
       .getOne();
 
     if (!tag) {
       logger.warn(`${keyword} - 태그가 존재하지 않습니다.`);
-      throw new NotFoundException('태그가 존재하지 않습니다.');
     }
 
     return tag;
