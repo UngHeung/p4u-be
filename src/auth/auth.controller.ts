@@ -1,7 +1,8 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Headers, Post, UseGuards } from '@nestjs/common';
 import { User } from 'src/user/entity/user.entity';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/signUp.dto';
+import { BasicTokenGuard } from './guards/basic-token.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -13,6 +14,7 @@ export class AuthController {
   }
 
   @Post('signin')
+  @UseGuards(BasicTokenGuard)
   loginUser(
     @Headers('authorization') rawToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
