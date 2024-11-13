@@ -22,11 +22,15 @@ export class Card extends BaseModel {
   @IsBoolean()
   isAnonymity: boolean;
 
+  @Column({ nullable: false, default: false })
+  @IsBoolean()
+  isAnswered: boolean;
+
   @ManyToOne(() => User, user => user.cards)
   writer: User;
 
-  @ManyToMany(() => Tag, tag => tag.cards)
-  @JoinTable({ name: 'card_tags' })
+  @ManyToMany(() => Tag, tag => tag.cards, { onDelete: 'CASCADE' })
+  @JoinTable({ name: 'cards_tags' })
   tags: Tag[];
 
   @ManyToMany(() => User, user => user.pickCards, { onDelete: 'CASCADE' })
