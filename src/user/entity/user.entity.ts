@@ -18,15 +18,15 @@ export class User extends BaseModel {
   @Length(2, 12, { message: lengthValidationMessage })
   @IsString({ message: stringValidationMessage })
   @Matches(/[a-zA-Z가-힣]/g, {
-    message: '이름은 한글, 영문 대소문자로만 입력해주세요.',
+    message: 'name은(는) 한글, 영문 대소문자로만 입력해주세요.',
   })
   name: string;
 
-  @Column({ nullable: false })
+  @Column({ nullable: false, unique: true })
   @Length(6, 12, { message: lengthValidationMessage })
   @IsString({ message: stringValidationMessage })
   @Matches(/[a-z0-9]/g, {
-    message: '아이디는 영문 소문자, 숫자로만 입력해주세요.',
+    message: 'id은(는) 영문 소문자, 숫자로만 입력해주세요.',
   })
   account: string;
 
@@ -35,7 +35,7 @@ export class User extends BaseModel {
   @IsString({ message: stringValidationMessage })
   @Matches(/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#$%]).{8,}$/g, {
     message:
-      '비밀번호는 영문 대소문자, 특수문자를 하나씩 포함하여 입력해주세요.',
+      'password은(는) 영문 대소문자, 특수문자를 하나씩 포함하여 입력해주세요.',
   })
   password: string;
 
@@ -43,9 +43,9 @@ export class User extends BaseModel {
   @IsBoolean()
   isActivate: boolean;
 
-  @OneToMany(() => Card, (card) => card.writer)
+  @OneToMany(() => Card, card => card.writer)
   cards: Card[];
 
-  @ManyToMany(() => Card, (card) => card.pickers)
+  @ManyToMany(() => Card, card => card.pickers)
   pickCards: Card[];
 }
