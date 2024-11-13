@@ -4,7 +4,7 @@ import { lengthValidationMessage } from 'src/common/validation/message/length-va
 import { stringValidationMessage } from 'src/common/validation/message/type-validation.message';
 import { Tag } from 'src/tag/entity/tag.entity';
 import { User } from 'src/user/entity/user.entity';
-import { Column, Entity, JoinColumn, ManyToMany, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne } from 'typeorm';
 
 @Entity({ name: 'cards' })
 export class Card extends BaseModel {
@@ -26,10 +26,10 @@ export class Card extends BaseModel {
   writer: User;
 
   @ManyToMany(() => Tag, tag => tag.cards)
-  @JoinColumn()
+  @JoinTable({ name: 'card_tags' })
   tags: Tag[];
 
   @ManyToMany(() => User, user => user.pickCards, { onDelete: 'CASCADE' })
-  @JoinColumn()
+  @JoinTable({ name: 'user_cards' })
   pickers: User[];
 }
