@@ -1,7 +1,13 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Tag } from 'src/tag/entity/tag.entity';
 import { TagService } from 'src/tag/tag.service';
+import { User } from 'src/user/entity/user.entity';
 import { DataSource, Repository } from 'typeorm';
 import { CreateCardDto } from './dto/create-card.dto';
 import { Card } from './entity/card.entity';
@@ -17,18 +23,35 @@ export class CardService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async createCard(dto: CreateCardDto): Promise<Card> {
+  async createCard(user: User, dto: CreateCardDto): Promise<Card> {
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      const tags: Tag[] = await Promise.all(
-        dto.tags.map(async tag => await this.tagService.createTag(tag)),
-      );
+      const card = this.cardRepository.create({
+        ...dto,
+        tags: [],
+        writer: user,
+      });
 
-      const card = this.cardRepository.create({ ...dto, tags });
+      if (!dto.keywords.length) {
+        logger.warn('최소 1개의 태그가 필요합니다.');
+        throw new BadRequestException('최소 1개의 태그가 필요합니다.');
+      }
+
+      card.tags = await Promise.all(
+        dto.keywords.map(async keyword => {
+          const tag = await this.tagService.getTagByKeyword(keyword);
+
+          if (tag) {
+            return tag;
+          } else {
+            return await this.tagService.createTag({ keyword });
+          }
+        }),
+      );
 
       await this.cardRepository.save(card);
 
@@ -38,7 +61,12 @@ export class CardService {
       return card;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      logger.error(error);
+
+      if (error.status === 400) {
+        throw new BadRequestException(error.message);
+      } else {
+        throw new InternalServerErrorException(error.message);
+      }
     } finally {
       await queryRunner.release();
     }
