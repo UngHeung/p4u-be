@@ -93,6 +93,7 @@ export class AuthService {
       name: user.name,
       account: user.account,
       createdAt: user.createdAt,
+      type: isRefreshToken ? 'refresh' : 'access',
     };
 
     const token = this.jwtService.sign(payload, {
