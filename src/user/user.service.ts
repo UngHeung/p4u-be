@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { SignUpDto } from 'src/auth/dto/signUp.dto';
 import { Repository } from 'typeorm';
 import { User } from './entity/user.entity';
-import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class UserService {
@@ -32,17 +32,25 @@ export class UserService {
   }
 
   async createUser(dto: SignUpDto) {
+    const isExists = await this.existsUser(dto.account);
+
+    if (isExists) {
+      throw new ConflictException('아이디가 이미 존재합니다.');
+    }
+
     const user = this.userRepository.create({
       ...dto,
     });
+
+    await this.userRepository.save(user);
 
     return user;
   }
 
   //
-  async existsUser(id: number) {
+  async existsUser(account: string) {
     const isExists = await this.userRepository.exists({
-      where: { id },
+      where: { account },
     });
 
     return isExists;
