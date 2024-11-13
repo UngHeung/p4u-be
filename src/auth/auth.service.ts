@@ -26,6 +26,8 @@ export class AuthService {
       password,
     });
 
+    delete user.password;
+
     return user;
   }
 
