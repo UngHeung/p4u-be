@@ -1,10 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { User } from 'src/user/entity/user.entity';
 import { UserService } from 'src/user/user.service';
 import { SignInDto } from './dto/signIn.dto';
 import { SignUpDto } from './dto/signUp.dto';
+
+const logger = new Logger();
 
 export interface TokenProps {
   accessToken: string;
@@ -28,6 +35,8 @@ export class AuthService {
 
     delete user.password;
 
+    logger.log(`${user.id} - 가입이 완료되었습니다.`);
+
     return user;
   }
 
@@ -41,23 +50,27 @@ export class AuthService {
       refreshToken: this.signToken(user, true),
     };
 
+    logger.log(`${user.id} - 로그인이 완료되었습니다.`);
+
     return token;
   }
 
   async authenticateAccountAndPassword(dto: SignInDto): Promise<User> {
-    const user = await this.userService.getUserByAccount(dto.account);
+    try {
+      const user = await this.userService.getUserByAccount(dto.account);
+      const isPassed = await bcrypt.compare(dto.password, user.password);
 
-    if (!user) {
-      throw new UnauthorizedException('아이디 또는 비밀번호를 확인해주세요.');
+      if (!isPassed) throw new UnauthorizedException();
+
+      return user;
+    } catch (error) {
+      if (error.status === 404) {
+        throw new NotFoundException('유저가 존재하지 않습니다.');
+      } else {
+        logger.error('비밀번호를 확인해주세요.');
+        throw new UnauthorizedException('비밀번호를 확인해주세요.');
+      }
     }
-
-    const isPassed = await bcrypt.compare(dto.password, user.password);
-
-    if (!isPassed) {
-      throw new UnauthorizedException('아이디 또는 비밀번호를 확인해주세요.');
-    }
-
-    return user;
   }
 
   logout(): TokenProps {
@@ -65,6 +78,8 @@ export class AuthService {
       accessToken: this.removeToken(),
       refreshToken: this.removeToken(),
     };
+
+    logger.log('로그아웃이 완료되었습니다.');
 
     return expired;
   }
@@ -87,6 +102,8 @@ export class AuthService {
         : +process.env.JWT_REFRESH_EXPIRES_IN,
     });
 
+    logger.log('토큰 발급이 완료되었습니다.');
+
     return token;
   }
 
@@ -95,10 +112,13 @@ export class AuthService {
     const split = decode.split(':');
 
     if (split.length !== 2) {
+      logger.warn('잘못된 토큰입니다.');
       throw new UnauthorizedException('잘못된 토큰입니다.');
     }
 
     const [account, password] = split;
+
+    logger.log('아이디, 비밀번호 디코딩이 완료되었습니다.');
 
     return { account, password };
   }
@@ -108,21 +128,28 @@ export class AuthService {
     const prefix = isBearer ? 'Bearer' : 'Basic';
 
     if (split.length !== 2 || split[0] !== prefix) {
+      logger.warn('만료되었거나 잘못된 토큰입니다.');
       throw new UnauthorizedException('만료되었거나 잘못된 토큰입니다.');
     }
 
     const token = split[1];
 
+    logger.log('토큰 추출이 완료되었습니다.');
+
     return token;
   }
 
-  verifyToken(token: string) {
+  async verifyToken(token: string) {
     try {
-      return this.jwtService.verify(token, {
+      const verifyToken = await this.jwtService.verify(token, {
         secret: process.env.JWT_SECRET,
         complete: true,
       });
+
+      logger.log('토큰 확인이 완료되었습니다.');
+      return verifyToken;
     } catch {
+      logger.warn('만료되었거나 잘못된 토큰입니다.');
       throw new UnauthorizedException('만료되었거나 잘못된 토큰입니다.');
     }
   }
@@ -133,6 +160,8 @@ export class AuthService {
       secret: process.env.JWT_SECRET,
       expiresIn: 0,
     });
+
+    logger.log('토큰 삭제가 완료되었습니다.');
 
     return token;
   }
@@ -151,10 +180,13 @@ export class AuthService {
     const isPassed = await bcrypt.compare(password, getUser.password);
 
     if (!isPassed) {
+      logger.warn('비밀번호를 확인해주세요.');
       throw new UnauthorizedException('비밀번호를 확인해주세요.');
     }
 
     delete user.password;
+
+    logger.log('비밀번호 확인이 완료되었습니다.');
 
     return isPassed;
   }
