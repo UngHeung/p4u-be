@@ -2,8 +2,10 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -22,7 +24,20 @@ export class CardController {
     return this.cardService.createCard(req.user, dto);
   }
 
-  @Delete('delete')
+  @Get('my')
+  @UseGuards(AccessTokenGuard)
+  async getCardsByWriterId(@Req() req) {
+    return this.cardService.getCardsByWriterId(req.user.id);
+  }
+
+  @Get('list')
+  @UseGuards(AccessTokenGuard)
+  async getCardsByAnswered(@Query('answered') answered: boolean) {
+    console.log(typeof answered);
+    return this.cardService.getCardsByAnswered(answered);
+  }
+
+  @Delete('delete/:id')
   @UseGuards(AccessTokenGuard)
   deleteCard(@Param('id') id: number): Promise<Card> {
     return this.cardService.deleteCard(id);

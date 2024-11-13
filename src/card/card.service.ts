@@ -72,28 +72,104 @@ export class CardService {
     }
   }
 
-  async deleteCard(id: number) {
-    const card = await this.cardRepository
+  async getCardsByWriterId(id: number): Promise<Card[]> {
+    const cards = await this.cardRepository
       .createQueryBuilder('card')
-      .where('id = :id', { id })
+      .leftJoinAndSelect('card.writer', 'writer')
       .leftJoinAndSelect('card.tags', 'tags')
-      .leftJoinAndSelect('tags.cards', 'tagCards')
-      .select(['card.id', 'tag.id', 'tagCards.id'])
-      .getOne();
+      .where('writer.id = :id', { id })
+      .select([
+        'card.id',
+        'card.title',
+        'card.content',
+        'card.isAnonymity',
+        'card.isAnswered',
+        'tags.id',
+        'tags.keyword',
+        'writer.id',
+        'writer.name',
+      ])
+      .getMany();
 
-    if (!card) {
-      logger.warn(`${id} - 카드가 존재하지 않습니다.`);
-      throw new NotFoundException(`카드가 존재하지 않습니다.`);
+    if (!cards) {
+      logger.log(`카드가 존재하지 않습니다.`);
+      return [];
     }
 
-    card.tags.forEach(tag => {
-      this.tagService.deleteTag(tag.id);
-    });
+    logger.log('카드 목록 반환이 완료되었습니다.');
 
-    await this.cardRepository.delete({ id });
+    return cards;
+  }
 
-    logger.log(`${id} - 카드가 삭제되었습니다.`);
+  async getCardsByAnswered(isAnswered: boolean): Promise<Card[]> {
+    const cards = await this.cardRepository
+      .createQueryBuilder('card')
+      .leftJoinAndSelect('card.writer', 'writer')
+      .leftJoinAndSelect('card.tags', 'tags')
+      .where('card.isAnswered = :isAnswered', { isAnswered })
+      .select([
+        'card.id',
+        'card.title',
+        'card.content',
+        'card.isAnonymity',
+        'card.isAnswered',
+        'tags.id',
+        'tags.keyword',
+        'writer.id',
+        'writer.name',
+      ])
+      .getMany();
 
-    return card;
+    if (!cards) {
+      logger.log(`카드가 존재하지 않습니다.`);
+      return [];
+    }
+
+    logger.log('카드 목록 반환이 완료되었습니다.');
+
+    return cards;
+  }
+
+  async deleteCard(id: number) {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const card = await this.cardRepository
+        .createQueryBuilder('card')
+        .where('card.id = :id', { id })
+        .leftJoinAndSelect('card.tags', 'tags')
+        .select(['card.id', 'tags.id'])
+        .getOne();
+
+      if (!card) {
+        logger.warn(`${id} - 카드가 존재하지 않습니다.`);
+        throw new NotFoundException(`카드가 존재하지 않습니다.`);
+      }
+
+      if (card.tags.length) {
+        card.tags.forEach(tag => {
+          this.tagService.deleteTag(tag.id);
+        });
+      }
+
+      await this.cardRepository.delete({ id });
+
+      logger.log(`${id} - 카드가 삭제되었습니다.`);
+
+      return card;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+
+      if (error.status === 404) {
+        throw new NotFoundException(error.message);
+      } else {
+        throw new InternalServerErrorException(error.message);
+      }
+    } finally {
+      await queryRunner.release();
+    }
   }
 }
