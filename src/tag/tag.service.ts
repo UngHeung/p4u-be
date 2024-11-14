@@ -27,6 +27,20 @@ export class TagService {
     return tag;
   }
 
+  async getBestTagList(): Promise<Tag[]> {
+    const tags = await this.tagRepository
+      .createQueryBuilder('tag')
+      .leftJoinAndSelect('tag.cards', 'cards')
+      .select(['tag.id', 'tag.keyword'])
+      .addSelect('COUNT(DISTINCT cards.id)', 'cardsCount')
+      .groupBy('tag.id')
+      .orderBy('COUNT(DISTINCT cards.id)', 'DESC')
+      .limit(10)
+      .getMany();
+
+    return tags;
+  }
+
   async createTag(dto: CreateTagDto): Promise<Tag> {
     const isExists = await this.existsTag(dto.keyword);
 
