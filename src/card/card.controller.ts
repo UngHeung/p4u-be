@@ -4,6 +4,8 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -12,6 +14,7 @@ import {
 import { AccessTokenGuard } from 'src/auth/guards/bearer-token.guard';
 import { CardService } from './card.service';
 import { CreateCardDto } from './dto/create-card.dto';
+import { PatchCardAnsweredDto } from './dto/patch-card-answered.dto';
 import { Card } from './entity/card.entity';
 
 @Controller('card')
@@ -30,11 +33,34 @@ export class CardController {
     return this.cardService.getCardsByWriterId(req.user.id);
   }
 
+  @Get()
+  async getCards() {
+    return this.cardService.getCards();
+  }
+
   @Get('list')
-  @UseGuards(AccessTokenGuard)
   async getCardsByAnswered(@Query('answered') answered: boolean) {
-    console.log(typeof answered);
     return this.cardService.getCardsByAnswered(answered);
+  }
+
+  @Get('search')
+  async searchCardsByKeyword(@Query('keyword') keyword: string) {
+    return;
+  }
+
+  @Get('search/tag')
+  async searchCardsByTags(@Query('keywords') keywords: string) {
+    return;
+  }
+
+  @Patch(':id/answered')
+  @UseGuards(AccessTokenGuard)
+  async patchCardAnswered(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: PatchCardAnsweredDto,
+  ): Promise<{ isAnswered: boolean }> {
+    return this.cardService.patchCardAnswered(req.user, id, dto);
   }
 
   @Delete('delete/:id')

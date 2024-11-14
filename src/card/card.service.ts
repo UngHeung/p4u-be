@@ -4,12 +4,14 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TagService } from 'src/tag/tag.service';
 import { User } from 'src/user/entity/user.entity';
 import { DataSource, Repository } from 'typeorm';
 import { CreateCardDto } from './dto/create-card.dto';
+import { PatchCardAnsweredDto } from './dto/patch-card-answered.dto';
 import { Card } from './entity/card.entity';
 
 const logger = new Logger();
@@ -63,6 +65,7 @@ export class CardService {
       await queryRunner.rollbackTransaction();
 
       if (error.status === 400) {
+        logger.log(`잘못된 값이 입력되었습니다.`);
         throw new BadRequestException(error.message);
       } else {
         throw new InternalServerErrorException(error.message);
@@ -76,8 +79,39 @@ export class CardService {
     const cards = await this.cardRepository
       .createQueryBuilder('card')
       .leftJoinAndSelect('card.writer', 'writer')
+      .leftJoinAndSelect('card.pickers', 'pickers')
       .leftJoinAndSelect('card.tags', 'tags')
       .where('writer.id = :id', { id })
+      .select([
+        'card.id',
+        'card.title',
+        'card.content',
+        'card.isAnonymity',
+        'card.isAnswered',
+        'tags.id',
+        'tags.keyword',
+        'writer.id',
+        'writer.name',
+        'pickers.id',
+      ])
+      .orderBy('card.id', 'DESC')
+      .getMany();
+
+    if (!cards) {
+      logger.log(`카드가 존재하지 않습니다.`);
+      return [];
+    }
+
+    logger.log('카드 목록 반환이 완료되었습니다.');
+
+    return cards;
+  }
+
+  async getCards(): Promise<Card[]> {
+    const cards = await this.cardRepository
+      .createQueryBuilder('card')
+      .leftJoinAndSelect('card.writer', 'writer')
+      .leftJoinAndSelect('card.tags', 'tags')
       .select([
         'card.id',
         'card.title',
@@ -128,6 +162,37 @@ export class CardService {
     logger.log('카드 목록 반환이 완료되었습니다.');
 
     return cards;
+  }
+
+  async patchCardAnswered(
+    user: User,
+    cardId: number,
+    dto: PatchCardAnsweredDto,
+  ): Promise<{ isAnswered: boolean }> {
+    const card = await this.cardRepository
+      .createQueryBuilder('card')
+      .where('card.id = :cardId', { cardId })
+      .leftJoinAndSelect('card.writer', 'writer')
+      .select(['card.id', 'card.isAnswered', 'writer.id'])
+      .getOne();
+
+    if (user.id !== card.writer.id) {
+      logger.warn('본인의 카드가 아닙니다.');
+      throw new UnauthorizedException('본인의 카드가 아닙니다.');
+    }
+
+    if (!card) {
+      logger.warn(`${cardId} - 카드가 존재하지 않습니다.`);
+      throw new NotFoundException('카드가 존재하지 않습니다.');
+    }
+
+    card.isAnswered = dto.isAnswered;
+
+    await this.cardRepository.save(card);
+
+    logger.log(`${cardId} - 카드의 isAnswered 항목이 변경되었습니다.`);
+
+    return { isAnswered: card.isAnswered };
   }
 
   async deleteCard(id: number) {
