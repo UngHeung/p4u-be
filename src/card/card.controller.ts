@@ -45,12 +45,12 @@ export class CardController {
 
   @Get('search')
   async searchCardsByKeyword(@Query('keyword') keyword: string) {
-    return;
+    return this.cardService.searchCardsByKeyword(keyword.trim());
   }
 
   @Get('search/tag')
   async searchCardsByTags(@Query('keywords') keywords: string) {
-    return;
+    return this.cardService.searchCardsByTags(keywords);
   }
 
   @Patch(':id/answered')

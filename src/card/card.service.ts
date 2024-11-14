@@ -164,6 +164,69 @@ export class CardService {
     return cards;
   }
 
+  async searchCardsByKeyword(keyword: string) {
+    const cards = await this.cardRepository
+      .createQueryBuilder('card')
+      .leftJoinAndSelect('card.tags', 'tags')
+      .leftJoinAndSelect('card.writer', 'writer')
+      .leftJoinAndSelect('card.pickers', 'pickers')
+      .where('tags.keyword = :keyword OR card.title ILIKE :keyword2', {
+        keyword,
+        keyword2: `%${keyword}%`,
+      })
+      .select([
+        'tags.id',
+        'tags.keyword',
+        'writer.id',
+        'writer.name',
+        'card.id',
+        'card.title',
+        'card.content',
+        'card.isAnonymity',
+        'card.isAnswered',
+        'pickers.id',
+      ])
+      .getMany();
+
+    if (!cards) {
+      logger.warn('검색된 카드가 없습니다.');
+    }
+
+    logger.log('검색된 카드목록 반환이 완료되었습니다.');
+    return cards;
+  }
+
+  async searchCardsByTags(keywords: string) {
+    const keywordList = keywords.split('_');
+
+    const cards = await this.cardRepository
+      .createQueryBuilder('card')
+      .leftJoinAndSelect('card.tags', 'tags')
+      .leftJoinAndSelect('card.writer', 'writer')
+      .leftJoinAndSelect('card.pickers', 'pickers')
+      .where('tags.keyword IN (:...keywords)', { keywords: keywordList })
+      .select([
+        'tags.id',
+        'tags.keyword',
+        'writer.id',
+        'writer.name',
+        'card.id',
+        'card.title',
+        'card.content',
+        'card.isAnonymity',
+        'card.isAnswered',
+        'pickers.id',
+      ])
+      .getMany();
+
+    if (!cards) {
+      logger.warn('검색된 카드가 없습니다.');
+    }
+
+    logger.log('검색된 카드목록 반환이 완료되었습니다.');
+    return cards;
+  }
+
   async patchCardAnswered(
     user: User,
     cardId: number,
