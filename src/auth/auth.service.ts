@@ -93,6 +93,7 @@ export class AuthService {
       name: user.name,
       account: user.account,
       createdAt: user.createdAt,
+      type: isRefreshToken ? 'refresh' : 'access',
     };
 
     const token = this.jwtService.sign(payload, {
@@ -164,6 +165,31 @@ export class AuthService {
     logger.log('토큰 삭제가 완료되었습니다.');
 
     return token;
+  }
+
+  async reissueToken(token: string, isRefreshToken: boolean) {
+    const decoded = await this.verifyToken(token);
+
+    const payload = {
+      ...decoded.payload,
+      id: decoded.payload.sub,
+    };
+
+    if (payload.type !== 'refresh') {
+      logger.log('토큰 재발급은 refresh 토큰으로만 가능합니다.');
+      throw new UnauthorizedException(
+        '토큰 재발급은 refresh 토큰으로만 가능합니다.',
+      );
+    }
+
+    return this.signToken(payload, isRefreshToken);
+  }
+
+  logoutUser(): { accessToken: string; refreshToken: string } {
+    return {
+      accessToken: this.removeToken(),
+      refreshToken: this.removeToken(),
+    };
   }
 
   /**

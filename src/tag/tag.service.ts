@@ -1,6 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DeleteResult, Repository } from 'typeorm';
 import { CreateTagDto } from './dto/create-tag.dto';
 import { Tag } from './entity/tag.entity';
 
@@ -15,17 +15,30 @@ export class TagService {
 
   async getTagByKeyword(keyword: string): Promise<Tag> {
     const tag = await this.tagRepository
-      .createQueryBuilder()
-      .where('keyword = :keyword', { keyword })
+      .createQueryBuilder('tag')
+      .where('tag.keyword = :keyword', { keyword })
       .select(['tag.id', 'tag.keyword'])
       .getOne();
 
     if (!tag) {
       logger.warn(`${keyword} - 태그가 존재하지 않습니다.`);
-      throw new NotFoundException('태그가 존재하지 않습니다.');
     }
 
     return tag;
+  }
+
+  async getBestTagList(): Promise<Tag[]> {
+    const tags = await this.tagRepository
+      .createQueryBuilder('tag')
+      .leftJoinAndSelect('tag.cards', 'cards')
+      .select(['tag.id', 'tag.keyword'])
+      .addSelect('COUNT(DISTINCT cards.id)', 'cardsCount')
+      .groupBy('tag.id')
+      .orderBy('COUNT(DISTINCT cards.id)', 'DESC')
+      .limit(10)
+      .getMany();
+
+    return tags;
   }
 
   async createTag(dto: CreateTagDto): Promise<Tag> {
@@ -63,19 +76,35 @@ export class TagService {
   async deleteTag(id: number): Promise<Tag> {
     const tag = await this.tagRepository
       .createQueryBuilder('tag')
-      .where('id = :id', { id })
+      .where('tag.id = :id', { id })
       .leftJoinAndSelect('tag.cards', 'cards')
       .select(['tag.id', 'cards.id'])
       .getOne();
 
     if (tag.cards.length) {
-      logger.warn(`${tag.keyword} - 태그를 사용하는 카드가 존재합니다.`);
+      logger.warn(`${tag.id} - 태그를 사용하는 카드가 존재합니다.`);
       return;
     }
 
     await this.tagRepository.delete(tag);
-    logger.log(`${tag.keyword} - 태그가 삭제되었습니다.`);
+    logger.log(`${tag.id} - 태그가 삭제되었습니다.`);
 
     return tag;
+  }
+
+  async clearTag(): Promise<DeleteResult[]> {
+    const tags = await this.tagRepository.find({ select: ['id'] });
+
+    const deleteTags = await Promise.all(
+      tags.map(async tag => {
+        const deleteTag = await this.tagRepository.delete(tag);
+
+        if (deleteTag) {
+          return deleteTag;
+        }
+      }),
+    );
+
+    return deleteTags;
   }
 }
