@@ -18,37 +18,9 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async getUserById(id: number) {
-    const user = await this.userRepository
-      .createQueryBuilder('user')
-      .where('user.id = :id', { id })
-      .select(['user.id', 'user.password'])
-      .getOne();
-
-    if (!user) {
-      logger.warn(`${id} - 유저가 존재하지 않습니다.`);
-      throw new NotFoundException('유저가 존재하지 않습니다.');
-    }
-
-    return user;
-  }
-
-  async getUserByAccount(account: string) {
-    const user = await this.userRepository
-      .createQueryBuilder('user')
-      .where('user.account = :account', { account })
-      .select(['user.id', 'user.name', 'user.account', 'user.password'])
-      .getOne();
-
-    if (!user) {
-      logger.warn(`${account} - 유저가 존재하지 않습니다.`);
-      throw new NotFoundException('유저가 존재하지 않습니다.');
-    }
-
-    return user;
-  }
-
   async createUser(dto: SignUpDto) {
+    logger.log('===== user.service.createUser =====');
+
     const isExists = await this.existsUser(dto.account);
 
     if (isExists) {
@@ -67,8 +39,99 @@ export class UserService {
     return user;
   }
 
+  async getUserById(id: number) {
+    logger.log('===== user.service.getUserById =====');
+
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id })
+      .select(['user.id', 'user.name'])
+      .getOne();
+
+    if (!user) {
+      logger.warn(`${id} - 유저가 존재하지 않습니다.`);
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    logger.log(`${id} - 유저 반환이 완료되었습니다.`);
+    return user;
+  }
+
+  async getUserByIdForVerifyPassword(id: number) {
+    logger.log('===== user.service.getUserById =====');
+
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id })
+      .select(['user.id', 'user.password'])
+      .getOne();
+
+    if (!user) {
+      logger.warn(`${id} - 유저가 존재하지 않습니다.`);
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    logger.log(`${id} - 유저 반환이 완료되었습니다.`);
+    return user;
+  }
+
+  async getUserByAccount(account: string) {
+    logger.log('===== user.service.getUserByAccount =====');
+
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.account = :account', { account })
+      .select(['user.id', 'user.name', 'user.account', 'user.password'])
+      .getOne();
+
+    if (!user) {
+      logger.warn(`${account} - 유저가 존재하지 않습니다.`);
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    logger.log(`${account} - 유저 반환이 완료되었습니다.`);
+    return user;
+  }
+
+  async toggleActivateUser(id: number): Promise<User> {
+    logger.log('===== user.service.toggleActivateUser =====');
+
+    const user = await this.userRepository
+      .createQueryBuilder('users')
+      .where('id = :id', { id })
+      .select(['user.id', 'user.isActivate'])
+      .getOne();
+
+    if (!user) {
+      logger.warn(`${id} - 유저가 존재하지 않습니다.`);
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    user.isActivate = !user.isActivate;
+
+    await this.userRepository.save(user);
+
+    logger.log(`유저가 ${!user.isActivate ? '비' : ''}활성화 되었습니다.`);
+
+    return user;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    logger.log('===== user.service.deleteUser =====');
+
+    const deleteResponse = await this.userRepository.delete({ id });
+
+    if (deleteResponse.affected) {
+      logger.log('유저 정보가 삭제되었습니다.');
+    } else {
+      logger.warn('유저 정보가 삭제되지 않았습니다.');
+    }
+  }
+
   //
   async existsUser(account: string) {
+    logger.log('===== user.service.existsUser =====');
+
     const isExists = await this.userRepository.exists({
       where: { account },
     });

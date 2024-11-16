@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { AccessTokenGuard } from 'src/auth/guards/bearer-token.guard';
 import { DeleteResult } from 'typeorm';
 import { CreateTagDto } from './dto/create-tag.dto';
@@ -18,6 +26,11 @@ export class TagController {
   @Get('best')
   getBestTagList(): Promise<Tag[]> {
     return this.tagService.getBestTagList();
+  }
+
+  @Get('keyword')
+  getTagListByKeyword(@Query('keyword') keyword: string): Promise<Tag[]> {
+    return this.tagService.getTagListByKeyword(keyword);
   }
 
   @Delete('clear')

@@ -26,6 +26,7 @@ export class CardService {
   ) {}
 
   async createCard(user: User, dto: CreateCardDto): Promise<Card> {
+    logger.log('===== card.service.createCard =====');
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();
@@ -76,11 +77,13 @@ export class CardService {
   }
 
   async getCardsByWriterId(id: number): Promise<Card[]> {
+    logger.log('===== card.service.getCardsByWriterId =====');
+
     const cards = await this.cardRepository
       .createQueryBuilder('card')
-      .leftJoinAndSelect('card.writer', 'writer')
-      .leftJoinAndSelect('card.pickers', 'pickers')
-      .leftJoinAndSelect('card.tags', 'tags')
+      .leftJoin('card.writer', 'writer')
+      .leftJoin('card.pickers', 'pickers')
+      .leftJoin('card.tags', 'tags')
       .where('writer.id = :id', { id })
       .select([
         'card.id',
@@ -108,10 +111,12 @@ export class CardService {
   }
 
   async getCards(): Promise<Card[]> {
+    logger.log('===== card.service.getCards =====');
+
     const cards = await this.cardRepository
       .createQueryBuilder('card')
-      .leftJoinAndSelect('card.writer', 'writer')
-      .leftJoinAndSelect('card.tags', 'tags')
+      .leftJoin('card.writer', 'writer')
+      .leftJoin('card.tags', 'tags')
       .select([
         'card.id',
         'card.title',
@@ -123,6 +128,7 @@ export class CardService {
         'writer.id',
         'writer.name',
       ])
+      .orderBy('card.id', 'DESC')
       .getMany();
 
     if (!cards) {
@@ -136,10 +142,12 @@ export class CardService {
   }
 
   async getCardsByAnswered(isAnswered: boolean): Promise<Card[]> {
+    logger.log('===== card.service.getCardsByAnswered =====');
+
     const cards = await this.cardRepository
       .createQueryBuilder('card')
-      .leftJoinAndSelect('card.writer', 'writer')
-      .leftJoinAndSelect('card.tags', 'tags')
+      .leftJoin('card.writer', 'writer')
+      .leftJoin('card.tags', 'tags')
       .where('card.isAnswered = :isAnswered', { isAnswered })
       .select([
         'card.id',
@@ -152,6 +160,7 @@ export class CardService {
         'writer.id',
         'writer.name',
       ])
+      .orderBy('card.id', 'DESC')
       .getMany();
 
     if (!cards) {
@@ -164,15 +173,17 @@ export class CardService {
     return cards;
   }
 
-  async searchCardsByKeyword(keyword: string) {
+  async searchCardsByKeyword(keyword: string): Promise<Card[]> {
+    logger.log('===== card.service.searchCardsByKeyword =====');
+    logger.log(`입력된 검색 키워드 : ${keyword}`);
+
     const cards = await this.cardRepository
       .createQueryBuilder('card')
-      .leftJoinAndSelect('card.tags', 'tags')
-      .leftJoinAndSelect('card.writer', 'writer')
-      .leftJoinAndSelect('card.pickers', 'pickers')
-      .where('tags.keyword = :keyword OR card.title ILIKE :keyword2', {
-        keyword,
-        keyword2: `%${keyword}%`,
+      .leftJoin('card.tags', 'tags')
+      .leftJoin('card.writer', 'writer')
+      .leftJoin('card.pickers', 'pickers')
+      .where('card.title ILIKE :keyword OR card.content ILIKE :keyword', {
+        keyword: `%${keyword}%`,
       })
       .select([
         'tags.id',
@@ -186,6 +197,7 @@ export class CardService {
         'card.isAnswered',
         'pickers.id',
       ])
+      .orderBy('card.id', 'DESC')
       .getMany();
 
     if (!cards) {
@@ -196,35 +208,55 @@ export class CardService {
     return cards;
   }
 
-  async searchCardsByTags(keywords: string) {
-    const keywordList = keywords.split('_');
+  async searchCardsByTags(keywords: string): Promise<Card[]> {
+    logger.log('===== card.service.searchCardsByTags =====');
 
-    const cards = await this.cardRepository
+    const keywordList = keywords.split('_');
+    logger.log(`선택된 태그 키워드 : ${keywordList.toString()}`);
+
+    const cardsIds = await this.cardRepository
       .createQueryBuilder('card')
-      .leftJoinAndSelect('card.tags', 'tags')
-      .leftJoinAndSelect('card.writer', 'writer')
-      .leftJoinAndSelect('card.pickers', 'pickers')
+      .innerJoin('card.tags', 'tags')
       .where('tags.keyword IN (:...keywords)', { keywords: keywordList })
-      .select([
-        'tags.id',
-        'tags.keyword',
-        'writer.id',
-        'writer.name',
-        'card.id',
-        'card.title',
-        'card.content',
-        'card.isAnonymity',
-        'card.isAnswered',
-        'pickers.id',
-      ])
+      .select('card.id')
+      .groupBy('card.id')
+      .having('COUNT(DISTINCT tags.keyword) = :count', {
+        count: keywordList.length,
+      })
       .getMany();
 
-    if (!cards) {
+    if (!cardsIds.length) {
       logger.warn('검색된 카드가 없습니다.');
-    }
 
-    logger.log('검색된 카드목록 반환이 완료되었습니다.');
-    return cards;
+      return [];
+    } else {
+      const idList: number[] = [];
+      cardsIds.forEach(card => idList.push(card.id));
+
+      const cards = await this.cardRepository
+        .createQueryBuilder('card')
+        .leftJoin('card.tags', 'tags')
+        .leftJoin('card.writer', 'writer')
+        .leftJoin('card.pickers', 'pickers')
+        .where('card.id IN (:...ids)', { ids: idList })
+        .select([
+          'card.id',
+          'card.title',
+          'card.content',
+          'card.isAnonymity',
+          'card.isAnswered',
+          'tags.id',
+          'tags.keyword',
+          'writer.id',
+          'writer.name',
+          'pickers.id',
+        ])
+        .orderBy('card.id', 'DESC')
+        .getMany();
+
+      logger.log('검색된 카드목록 반환이 완료되었습니다.');
+      return cards;
+    }
   }
 
   async patchCardAnswered(
@@ -232,10 +264,12 @@ export class CardService {
     cardId: number,
     dto: PatchCardAnsweredDto,
   ): Promise<{ isAnswered: boolean }> {
+    logger.log('===== card.service.patchCardAnswered =====');
+
     const card = await this.cardRepository
       .createQueryBuilder('card')
       .where('card.id = :cardId', { cardId })
-      .leftJoinAndSelect('card.writer', 'writer')
+      .leftJoin('card.writer', 'writer')
       .select(['card.id', 'card.isAnswered', 'writer.id'])
       .getOne();
 
@@ -259,6 +293,8 @@ export class CardService {
   }
 
   async deleteCard(id: number) {
+    logger.log('===== card.service.deleteCard =====');
+
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();
@@ -268,7 +304,7 @@ export class CardService {
       const card = await this.cardRepository
         .createQueryBuilder('card')
         .where('card.id = :id', { id })
-        .leftJoinAndSelect('card.tags', 'tags')
+        .leftJoin('card.tags', 'tags')
         .select(['card.id', 'tags.id'])
         .getOne();
 
