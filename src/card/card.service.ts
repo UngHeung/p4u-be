@@ -166,7 +166,7 @@ export class CardService {
     return cards;
   }
 
-  async searchCardsByKeyword(keyword: string) {
+  async searchCardsByKeyword(keyword: string): Promise<Card[]> {
     logger.log(`입력된 검색 키워드 : ${keyword}`);
 
     const cards = await this.cardRepository
@@ -201,7 +201,7 @@ export class CardService {
     return cards;
   }
 
-  async searchCardsByTags(keywords: string) {
+  async searchCardsByTags(keywords: string): Promise<Card[]> {
     const keywordList = keywords.split('_');
     logger.log(`선택된 태그 키워드 : ${keywordList.toString()}`);
 
