@@ -26,6 +26,7 @@ export class CardService {
   ) {}
 
   async createCard(user: User, dto: CreateCardDto): Promise<Card> {
+    logger.log('===== card.service.createCard =====');
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();
@@ -76,6 +77,8 @@ export class CardService {
   }
 
   async getCardsByWriterId(id: number): Promise<Card[]> {
+    logger.log('===== card.service.getCardsByWriterId =====');
+
     const cards = await this.cardRepository
       .createQueryBuilder('card')
       .leftJoin('card.writer', 'writer')
@@ -108,6 +111,8 @@ export class CardService {
   }
 
   async getCards(): Promise<Card[]> {
+    logger.log('===== card.service.getCards =====');
+
     const cards = await this.cardRepository
       .createQueryBuilder('card')
       .leftJoin('card.writer', 'writer')
@@ -137,6 +142,8 @@ export class CardService {
   }
 
   async getCardsByAnswered(isAnswered: boolean): Promise<Card[]> {
+    logger.log('===== card.service.getCardsByAnswered =====');
+
     const cards = await this.cardRepository
       .createQueryBuilder('card')
       .leftJoin('card.writer', 'writer')
@@ -167,6 +174,7 @@ export class CardService {
   }
 
   async searchCardsByKeyword(keyword: string): Promise<Card[]> {
+    logger.log('===== card.service.searchCardsByKeyword =====');
     logger.log(`입력된 검색 키워드 : ${keyword}`);
 
     const cards = await this.cardRepository
@@ -201,6 +209,8 @@ export class CardService {
   }
 
   async searchCardsByTags(keywords: string): Promise<Card[]> {
+    logger.log('===== card.service.searchCardsByTags =====');
+
     const keywordList = keywords.split('_');
     logger.log(`선택된 태그 키워드 : ${keywordList.toString()}`);
 
@@ -254,6 +264,8 @@ export class CardService {
     cardId: number,
     dto: PatchCardAnsweredDto,
   ): Promise<{ isAnswered: boolean }> {
+    logger.log('===== card.service.patchCardAnswered =====');
+
     const card = await this.cardRepository
       .createQueryBuilder('card')
       .where('card.id = :cardId', { cardId })
@@ -281,6 +293,8 @@ export class CardService {
   }
 
   async deleteCard(id: number) {
+    logger.log('===== card.service.deleteCard =====');
+
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();
