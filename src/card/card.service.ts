@@ -167,6 +167,8 @@ export class CardService {
   }
 
   async searchCardsByKeyword(keyword: string) {
+    logger.log(`입력된 검색 키워드 : ${keyword}`);
+
     const cards = await this.cardRepository
       .createQueryBuilder('card')
       .leftJoin('card.tags', 'tags')
@@ -201,6 +203,7 @@ export class CardService {
 
   async searchCardsByTags(keywords: string) {
     const keywordList = keywords.split('_');
+    logger.log(`선택된 태그 키워드 : ${keywordList.toString()}`);
 
     const cardsIds = await this.cardRepository
       .createQueryBuilder('card')
@@ -213,7 +216,7 @@ export class CardService {
       })
       .getMany();
 
-    if (!cardsIds) {
+    if (!cardsIds.length) {
       logger.warn('검색된 카드가 없습니다.');
 
       return [];
