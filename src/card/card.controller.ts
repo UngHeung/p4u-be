@@ -29,27 +29,33 @@ export class CardController {
 
   @Get('my')
   @UseGuards(AccessTokenGuard)
-  async getCardsByWriterId(@Req() req) {
+  async getCardsByWriterId(@Req() req): Promise<Card[]> {
     return this.cardService.getCardsByWriterId(req.user.id);
   }
 
   @Get()
-  async getCards() {
+  async getCards(): Promise<Card[]> {
     return this.cardService.getCards();
   }
 
   @Get('list')
-  async getCardsByAnswered(@Query('answered') answered: boolean) {
+  async getCardsByAnswered(
+    @Query('answered') answered: boolean,
+  ): Promise<Card[]> {
     return this.cardService.getCardsByAnswered(answered);
   }
 
   @Get('search')
-  async searchCardsByKeyword(@Query('keyword') keyword: string) {
+  async searchCardsByKeyword(
+    @Query('keyword') keyword: string,
+  ): Promise<Card[]> {
     return this.cardService.searchCardsByKeyword(keyword.trim());
   }
 
   @Get('search/tag')
-  async searchCardsByTags(@Query('keywords') keywords: string) {
+  async searchCardsByTags(
+    @Query('keywords') keywords: string,
+  ): Promise<Card[]> {
     return this.cardService.searchCardsByTags(keywords);
   }
 

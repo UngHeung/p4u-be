@@ -202,7 +202,9 @@ export class AuthService {
   }
 
   async verifyPassword(user: User, password: string): Promise<boolean> {
-    const getUser = await this.userService.getUserById(user.id);
+    const getUser = await this.userService.getUserByIdForVerifyPassword(
+      user.id,
+    );
     const isPassed = await bcrypt.compare(password, getUser.password);
 
     if (!isPassed) {

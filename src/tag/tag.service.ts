@@ -14,6 +14,8 @@ export class TagService {
   ) {}
 
   async getTagByKeyword(keyword: string): Promise<Tag> {
+    logger.log(`===== tag.service.getTagByKeyword =====`);
+
     const tag = await this.tagRepository
       .createQueryBuilder('tag')
       .where('tag.keyword = :keyword', { keyword })
@@ -28,9 +30,11 @@ export class TagService {
   }
 
   async getBestTagList(): Promise<Tag[]> {
+    logger.log(`===== tag.service.getBestTagList =====`);
+
     const tags = await this.tagRepository
       .createQueryBuilder('tag')
-      .leftJoinAndSelect('tag.cards', 'cards')
+      .leftJoin('tag.cards', 'cards')
       .select(['tag.id', 'tag.keyword'])
       .addSelect('COUNT(DISTINCT cards.id)', 'cardsCount')
       .groupBy('tag.id')
@@ -38,10 +42,33 @@ export class TagService {
       .limit(10)
       .getMany();
 
+    logger.log('베스트 태그 목록 반환이 완료되었습니다.');
+
+    return tags;
+  }
+
+  async getTagListByKeyword(keyword: string): Promise<Tag[]> {
+    logger.log(`===== tag.service.getTagListByKeyword =====`);
+    logger.log(`입력된 태그 검색 키워드 : ${keyword}`);
+
+    const tags = await this.tagRepository
+      .createQueryBuilder('tag')
+      .leftJoin('tag.cards', 'cards')
+      .select(['tag.id', 'tag.keyword'])
+      .addSelect('COUNT(DISTINCT cards.id)', 'cardsCount')
+      .where('tag.keyword ILIKE :keyword', { keyword: `%${keyword}%` })
+      .groupBy('tag.id')
+      .orderBy('COUNT(DISTINCT cards.id)', 'DESC')
+      .limit(10)
+      .getMany();
+
+    logger.log('키워드에 맞는 태그 목록 반환이 완료되었습니다.');
+
     return tags;
   }
 
   async createTag(dto: CreateTagDto): Promise<Tag> {
+    logger.log(`===== tag.service.createTag =====`);
     const isExists = await this.existsTag(dto.keyword);
 
     if (isExists) {
@@ -62,6 +89,7 @@ export class TagService {
   }
 
   async existsTag(keyword: string): Promise<boolean> {
+    logger.log(`===== tag.service.existsTag =====`);
     const isExists = await this.tagRepository.exists({
       where: { keyword },
     });
@@ -74,6 +102,7 @@ export class TagService {
   }
 
   async deleteTag(id: number): Promise<Tag> {
+    logger.log(`===== tag.service.deleteTag =====`);
     const tag = await this.tagRepository
       .createQueryBuilder('tag')
       .where('tag.id = :id', { id })
@@ -93,6 +122,7 @@ export class TagService {
   }
 
   async clearTag(): Promise<DeleteResult[]> {
+    logger.log(`===== tag.service.clearTag =====`);
     const tags = await this.tagRepository.find({ select: ['id'] });
 
     const deleteTags = await Promise.all(
