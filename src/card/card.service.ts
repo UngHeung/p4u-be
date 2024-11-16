@@ -174,9 +174,8 @@ export class CardService {
       .leftJoin('card.tags', 'tags')
       .leftJoin('card.writer', 'writer')
       .leftJoin('card.pickers', 'pickers')
-      .where('tags.keyword = :keyword OR card.title ILIKE :keyword2', {
-        keyword,
-        keyword2: `%${keyword}%`,
+      .where('card.title ILIKE :keyword OR card.content ILIKE :keyword', {
+        keyword: `%${keyword}%`,
       })
       .select([
         'tags.id',
