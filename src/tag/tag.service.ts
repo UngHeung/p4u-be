@@ -41,6 +41,17 @@ export class TagService {
     return tags;
   }
 
+  async getTagListByKeyword(keyword: string): Promise<Tag[]> {
+    const tags = await this.tagRepository
+      .createQueryBuilder('tag')
+      .select(['tag.id', 'tag.keyword'])
+      .where('tag.keyword ILIKE :keyword', { keyword: `%${keyword}%` })
+      .orderBy('tag.id', 'DESC')
+      .getMany();
+
+    return tags;
+  }
+
   async createTag(dto: CreateTagDto): Promise<Tag> {
     const isExists = await this.existsTag(dto.keyword);
 
