@@ -69,6 +69,15 @@ export class CardController {
     return this.cardService.patchCardAnswered(req.user, id, dto);
   }
 
+  @Patch(':id/pick')
+  @UseGuards(AccessTokenGuard)
+  async togglePickedCard(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<Card> {
+    return this.cardService.togglePickedCard(req.user, id);
+  }
+
   @Delete('delete/:id')
   @UseGuards(AccessTokenGuard)
   deleteCard(@Param('id') id: number): Promise<Card> {

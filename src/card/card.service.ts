@@ -116,6 +116,7 @@ export class CardService {
     const cards = await this.cardRepository
       .createQueryBuilder('card')
       .leftJoin('card.writer', 'writer')
+      .leftJoin('card.pickers', 'pickers')
       .leftJoin('card.tags', 'tags')
       .select([
         'card.id',
@@ -123,6 +124,7 @@ export class CardService {
         'card.content',
         'card.isAnonymity',
         'card.isAnswered',
+        'pickers.id',
         'tags.id',
         'tags.keyword',
         'writer.id',
@@ -147,6 +149,7 @@ export class CardService {
     const cards = await this.cardRepository
       .createQueryBuilder('card')
       .leftJoin('card.writer', 'writer')
+      .leftJoin('card.pickers', 'pickers')
       .leftJoin('card.tags', 'tags')
       .where('card.isAnswered = :isAnswered', { isAnswered })
       .select([
@@ -155,6 +158,7 @@ export class CardService {
         'card.content',
         'card.isAnonymity',
         'card.isAnswered',
+        'pickers.id',
         'tags.id',
         'tags.keyword',
         'writer.id',
@@ -290,6 +294,41 @@ export class CardService {
     logger.log(`${cardId} - 카드의 isAnswered 항목이 변경되었습니다.`);
 
     return { isAnswered: card.isAnswered };
+  }
+
+  async togglePickedCard(user: User, id: number): Promise<Card> {
+    logger.log('===== card.service.togglePickedCard =====');
+
+    const card = await this.cardRepository
+      .createQueryBuilder('card')
+      .leftJoin('card.pickers', 'pickers')
+      .where('card.id = :id', { id })
+      .select(['card.id', 'pickers.id'])
+      .getOne();
+
+    if (!card) {
+      logger.warn(`${id} - 카드가 존재하지 않습니다.`);
+      throw new NotFoundException('카드가 존재하지 않습니다.');
+    }
+
+    const pickers = card.pickers;
+    const currLen = pickers.length;
+
+    let newPickers = pickers.filter(picker => picker.id !== user.id);
+
+    if (currLen === newPickers.length) {
+      newPickers = [...pickers, user];
+      logger.log(`${user.id} - 카드에 새로운 picker가 추가되었습니다.`);
+    } else {
+      logger.log(`${user.id} - 카드에서 해당 picker가 제거되었습니다.`);
+    }
+
+    card.pickers = newPickers;
+
+    this.cardRepository.save(card);
+    logger.log(`${id} - 카드에 새로운 정보가 갱신되었습니다.`);
+
+    return card;
   }
 
   async deleteCard(id: number) {
