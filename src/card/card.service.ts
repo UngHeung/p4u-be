@@ -221,9 +221,10 @@ export class CardService {
     const cardsIds = await this.cardRepository
       .createQueryBuilder('card')
       .innerJoin('card.tags', 'tags')
+      .leftJoin('card.pickers', 'pickers')
       .where('tags.keyword IN (:...keywords)', { keywords: keywordList })
-      .select('card.id')
-      .groupBy('card.id')
+      .select(['card.id', 'card.isAnswered', 'pickers.id'])
+      .groupBy('card.id, pickers.id')
       .having('COUNT(DISTINCT tags.keyword) = :count', {
         count: keywordList.length,
       })
