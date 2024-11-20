@@ -14,7 +14,7 @@ export class Card extends BaseModel {
   title: string;
 
   @Column({ nullable: false })
-  @Length(2, 300, { message: lengthValidationMessage })
+  @Length(2, 500, { message: lengthValidationMessage })
   @IsString({ message: stringValidationMessage })
   content: string;
 
