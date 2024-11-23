@@ -7,9 +7,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { BaseModel } from 'src/common/entity/base.entity';
 import { TagService } from 'src/tag/tag.service';
 import { User } from 'src/user/entity/user.entity';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { CreateCardDto } from './dto/create-card.dto';
 import { PatchCardAnsweredDto } from './dto/patch-card-answered.dto';
 import { Card } from './entity/card.entity';
@@ -76,7 +77,11 @@ export class CardService {
     }
   }
 
-  async getCardsByWriterId(id: number): Promise<Card[]> {
+  async getCardsByWriterId(
+    id: number,
+    take: number,
+    cursor: number,
+  ): Promise<{ list: Card[]; cursor: number }> {
     logger.log('===== card.service.getCardsByWriterId =====');
 
     const cards = await this.cardRepository
@@ -85,57 +90,48 @@ export class CardService {
       .leftJoin('card.pickers', 'pickers')
       .leftJoin('card.tags', 'tags')
       .where('writer.id = :id', { id })
+      .andWhere('card.id > :cursor', { cursor })
       .select([
+        'tags.id',
+        'tags.keyword',
+        'writer.id',
+        'writer.name',
         'card.id',
         'card.title',
         'card.content',
         'card.isAnonymity',
         'card.isAnswered',
-        'tags.id',
-        'tags.keyword',
-        'writer.id',
-        'writer.name',
         'pickers.id',
       ])
       .orderBy('card.id', 'DESC')
+      .limit(take + 1)
       .getMany();
 
     if (!cards) {
       logger.log(`카드가 존재하지 않습니다.`);
-      return [];
+      return { list: [], cursor: null };
     }
 
     logger.log('카드 목록 반환이 완료되었습니다.');
 
-    return cards;
+    if (cards.length > take) {
+      return { list: cards.slice(0, take), cursor: cards[cards.length - 2].id };
+    } else {
+      return { list: cards, cursor: null };
+    }
   }
 
-  async getCards(): Promise<Card[]> {
+  async getCards(
+    take: number,
+    cursor: number,
+  ): Promise<{ list: Card[]; cursor: number }> {
     logger.log('===== card.service.getCards =====');
 
-    const cards = await this.cardRepository
-      .createQueryBuilder('card')
-      .leftJoin('card.writer', 'writer')
-      .leftJoin('card.pickers', 'pickers')
-      .leftJoin('card.tags', 'tags')
-      .select([
-        'card.id',
-        'card.title',
-        'card.content',
-        'card.isAnonymity',
-        'card.isAnswered',
-        'pickers.id',
-        'tags.id',
-        'tags.keyword',
-        'writer.id',
-        'writer.name',
-      ])
-      .orderBy('card.id', 'DESC')
-      .getMany();
+    const cards = await this.cursorPaginateCard('list', take, cursor);
 
-    if (!cards) {
+    if (!cards.list.length) {
       logger.log(`카드가 존재하지 않습니다.`);
-      return [];
+      return { list: [], cursor: null };
     }
 
     logger.log('카드 목록 반환이 완료되었습니다.');
@@ -143,33 +139,24 @@ export class CardService {
     return cards;
   }
 
-  async getCardsByAnswered(isAnswered: boolean): Promise<Card[]> {
+  async getCardsByAnswered(
+    isAnswered: boolean,
+    take: number,
+    cursor: number,
+  ): Promise<{ list: Card[]; cursor: number }> {
     logger.log('===== card.service.getCardsByAnswered =====');
 
-    const cards = await this.cardRepository
-      .createQueryBuilder('card')
-      .leftJoin('card.writer', 'writer')
-      .leftJoin('card.pickers', 'pickers')
-      .leftJoin('card.tags', 'tags')
-      .where('card.isAnswered = :isAnswered', { isAnswered })
-      .select([
-        'card.id',
-        'card.title',
-        'card.content',
-        'card.isAnonymity',
-        'card.isAnswered',
-        'pickers.id',
-        'tags.id',
-        'tags.keyword',
-        'writer.id',
-        'writer.name',
-      ])
-      .orderBy('card.id', 'DESC')
-      .getMany();
+    const cards = await this.cursorPaginateCard(
+      'my',
+      take,
+      cursor,
+      '',
+      isAnswered,
+    );
 
-    if (!cards) {
+    if (!cards.list.length) {
       logger.log(`카드가 존재하지 않습니다.`);
-      return [];
+      return { list: [], cursor: null };
     }
 
     logger.log('카드 목록 반환이 완료되었습니다.');
@@ -177,42 +164,36 @@ export class CardService {
     return cards;
   }
 
-  async searchCardsByKeyword(keyword: string): Promise<Card[]> {
+  async searchCardsByKeyword(
+    keyword: string,
+    take: number,
+    cursor: number,
+  ): Promise<{ list: Card[]; cursor: number }> {
     logger.log('===== card.service.searchCardsByKeyword =====');
     logger.log(`입력된 검색 키워드 : ${keyword}`);
 
-    const cards = await this.cardRepository
-      .createQueryBuilder('card')
-      .leftJoin('card.tags', 'tags')
-      .leftJoin('card.writer', 'writer')
-      .leftJoin('card.pickers', 'pickers')
-      .where('card.title ILIKE :keyword OR card.content ILIKE :keyword', {
-        keyword: `%${keyword}%`,
-      })
-      .select([
-        'tags.id',
-        'tags.keyword',
-        'writer.id',
-        'writer.name',
-        'card.id',
-        'card.title',
-        'card.content',
-        'card.isAnonymity',
-        'card.isAnswered',
-        'pickers.id',
-      ])
-      .orderBy('card.id', 'DESC')
-      .getMany();
+    const cards = await this.cursorPaginateCard(
+      'search',
+      take,
+      cursor,
+      keyword,
+    );
 
-    if (!cards) {
-      logger.warn('검색된 카드가 없습니다.');
+    if (!cards.list.length) {
+      logger.log(`카드가 존재하지 않습니다.`);
+      return { list: [], cursor: null };
     }
 
     logger.log('검색된 카드목록 반환이 완료되었습니다.');
+
     return cards;
   }
 
-  async searchCardsByTags(keywords: string): Promise<Card[]> {
+  async searchCardsByTags(
+    keywords: string,
+    take: number,
+    cursor: number,
+  ): Promise<{ list: Card[]; cursor: number }> {
     logger.log('===== card.service.searchCardsByTags =====');
 
     const keywordList = keywords.split('_');
@@ -222,8 +203,12 @@ export class CardService {
       .createQueryBuilder('card')
       .innerJoin('card.tags', 'tags')
       .leftJoin('card.pickers', 'pickers')
-      .where('tags.keyword IN (:...keywords)', { keywords: keywordList })
+      .where('tags.keyword IN (:...keywords)', {
+        keywords: keywordList,
+      })
+      .andWhere(`card.id ${cursor >= 0 ? '<' : '>'} :cursor`, { cursor })
       .select(['card.id', 'card.isAnswered', 'pickers.id'])
+      .take(take + 1)
       .groupBy('card.id, pickers.id')
       .having('COUNT(DISTINCT tags.keyword) = :count', {
         count: keywordList.length,
@@ -233,33 +218,22 @@ export class CardService {
     if (!cardsIds.length) {
       logger.warn('검색된 카드가 없습니다.');
 
-      return [];
+      return { list: [], cursor: -1 };
     } else {
       const idList: number[] = [];
       cardsIds.forEach(card => idList.push(card.id));
 
-      const cards = await this.cardRepository
-        .createQueryBuilder('card')
-        .leftJoin('card.tags', 'tags')
-        .leftJoin('card.writer', 'writer')
-        .leftJoin('card.pickers', 'pickers')
-        .where('card.id IN (:...ids)', { ids: idList })
-        .select([
-          'card.id',
-          'card.title',
-          'card.content',
-          'card.isAnonymity',
-          'card.isAnswered',
-          'tags.id',
-          'tags.keyword',
-          'writer.id',
-          'writer.name',
-          'pickers.id',
-        ])
-        .orderBy('card.id', 'DESC')
-        .getMany();
+      const cards = await this.cursorPaginateCard(
+        'list',
+        take,
+        cursor,
+        '',
+        false,
+        idList,
+      );
 
       logger.log('검색된 카드목록 반환이 완료되었습니다.');
+
       return cards;
     }
   }
@@ -375,5 +349,87 @@ export class CardService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async cursorPaginateCard(
+    type: 'list' | 'my' | 'tag' | 'search',
+    take: number,
+    cursor: number,
+    keyword?: string,
+    isAnswered?: boolean,
+    ids?: number[],
+  ): Promise<{ list: Card[]; cursor: number }> {
+    const queryBuilder = this.composeQueryBuilder(
+      this.cardRepository,
+      type,
+      take,
+      cursor,
+      isAnswered,
+      keyword,
+      ids,
+    );
+
+    queryBuilder
+      .leftJoin('card.writer', 'writer')
+      .leftJoin('card.pickers', 'pickers')
+      .leftJoin('card.tags', 'tags')
+      .select([
+        'card.id',
+        'card.title',
+        'card.content',
+        'card.isAnonymity',
+        'card.isAnswered',
+        'tags.id',
+        'tags.keyword',
+        'writer.id',
+        'writer.name',
+        'pickers.id',
+      ])
+      .orderBy('card.id', 'DESC')
+      .take(take + 1);
+
+    const cards = await queryBuilder.getMany();
+    const hasNext = cards.length > take;
+
+    if (hasNext) {
+      return { list: cards.slice(0, take), cursor: cards[cards.length - 2].id };
+    } else {
+      return { list: cards, cursor: null };
+    }
+  }
+
+  composeQueryBuilder<T extends BaseModel>(
+    repo: Repository<T>,
+    type: 'list' | 'my' | 'search' | 'tag',
+    take: number,
+    cursor: number,
+    isAnswered?: boolean,
+    keyword?: string,
+    ids?: number[],
+  ): SelectQueryBuilder<T> {
+    const queryBuilder = repo.createQueryBuilder('card');
+
+    if (cursor && cursor >= 0) {
+      if (type === 'my') {
+        queryBuilder.where('card.isAnswered = :isAnswered', {
+          isAnswered: isAnswered,
+        });
+      } else if (type === 'tag') {
+        queryBuilder.where('card.id IN (:...ids)', { ids });
+      } else if (type === 'search') {
+        queryBuilder.where(
+          'card.title ILIKE :keyword OR card.content ILIKE :keyword',
+          {
+            keyword: `%${keyword}%`,
+          },
+        );
+      }
+
+      queryBuilder.andWhere(`card.id ${cursor >= 0 ? '<' : '>'} :cursor`, {
+        cursor,
+      });
+    }
+
+    return queryBuilder;
   }
 }
