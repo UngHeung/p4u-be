@@ -29,34 +29,51 @@ export class CardController {
 
   @Get('my')
   @UseGuards(AccessTokenGuard)
-  async getCardsByWriterId(@Req() req): Promise<Card[]> {
-    return this.cardService.getCardsByWriterId(req.user.id);
+  async getCardsByWriterId(
+    @Req() req,
+    @Query('take') take: string,
+    @Query('cursor') cursor: string,
+  ): Promise<{ list: Card[]; cursor: number }> {
+    return this.cardService.getCardsByWriterId(req.user.id, +take, +cursor);
   }
 
   @Get()
-  async getCards(): Promise<Card[]> {
-    return this.cardService.getCards();
+  async getCards(
+    @Query('take') take: string,
+    @Query('cursor') cursor: string,
+  ): Promise<{ list: Card[]; cursor: number }> {
+    return this.cardService.getCards(+take, +cursor);
   }
 
-  @Get('list')
+  @Get('answered')
   async getCardsByAnswered(
     @Query('answered') answered: boolean,
-  ): Promise<Card[]> {
-    return this.cardService.getCardsByAnswered(answered);
+    @Query('take') take: string,
+    @Query('cursor') cursor: string,
+  ): Promise<{ list: Card[]; cursor: number }> {
+    return this.cardService.getCardsByAnswered(answered, +take, +cursor);
   }
 
   @Get('search')
   async searchCardsByKeyword(
     @Query('keyword') keyword: string,
-  ): Promise<Card[]> {
-    return this.cardService.searchCardsByKeyword(keyword.trim());
+    @Query('take') take: string,
+    @Query('cursor') cursor: string,
+  ): Promise<{ list: Card[]; cursor: number }> {
+    return this.cardService.searchCardsByKeyword(
+      keyword.trim(),
+      +take,
+      +cursor,
+    );
   }
 
   @Get('search/tag')
   async searchCardsByTags(
-    @Query('keywords') keywords: string,
-  ): Promise<Card[]> {
-    return this.cardService.searchCardsByTags(keywords);
+    @Query('keyword') keywords: string,
+    @Query('take') take: string,
+    @Query('cursor') cursor: string,
+  ): Promise<{ list: Card[]; cursor: number }> {
+    return this.cardService.searchCardsByTags(keywords, +take, +cursor);
   }
 
   @Patch(':id/answered')
