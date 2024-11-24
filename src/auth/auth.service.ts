@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -7,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { User } from 'src/user/entity/user.entity';
+import { UserRole } from 'src/user/enum/userRole.enum';
 import { UserService } from 'src/user/user.service';
 import { SignInDto } from './dto/signIn.dto';
 import { SignUpDto } from './dto/signUp.dto';
@@ -217,5 +219,23 @@ export class AuthService {
     logger.log('비밀번호 확인이 완료되었습니다.');
 
     return isPassed;
+  }
+
+  /**
+   * Admin
+   */
+
+  async checkAdmin(id: number): Promise<boolean> {
+    logger.log('===== auth.service.checkAdmin =====');
+
+    const user = await this.userService.getUserById(id);
+
+    if (user.userRole !== UserRole.ADMIN) {
+      logger.warn(`${user.id} - 관리자 권한이 없습니다.`);
+      throw new ForbiddenException('관리자 권한이 없습니다.');
+    }
+
+    logger.log(`${user.id} - 관리자 권한이 확인되었습니다.`);
+    return true;
   }
 }
