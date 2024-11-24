@@ -93,7 +93,6 @@ export class AuthService {
       name: user.name,
       account: user.account,
       userRole: user.userRole,
-      createdAt: user.createdAt,
       type: isRefreshToken ? 'refresh' : 'access',
     };
 
