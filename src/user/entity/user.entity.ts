@@ -1,9 +1,10 @@
-import { IsBoolean, IsString, Length, Matches } from 'class-validator';
+import { IsBoolean, IsEnum, IsString, Length, Matches } from 'class-validator';
 import { Card } from 'src/card/entity/card.entity';
 import { BaseModel } from 'src/common/entity/base.entity';
 import { lengthValidationMessage } from 'src/common/validation/message/length-validation.message';
 import { stringValidationMessage } from 'src/common/validation/message/type-validation.message';
 import { Column, Entity, ManyToMany, OneToMany } from 'typeorm';
+import { UserRole } from '../enum/userRole.enum';
 
 @Entity({
   name: 'users',
@@ -38,6 +39,10 @@ export class User extends BaseModel {
       'password은(는) 영문 대소문자, 특수문자를 하나씩 포함하여 입력해주세요.',
   })
   password: string;
+
+  @Column({ nullable: false, default: UserRole.USER })
+  @IsEnum(UserRole)
+  userRole: UserRole;
 
   @Column({ nullable: false, default: true })
   @IsBoolean()

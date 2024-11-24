@@ -19,6 +19,12 @@ export class UserController {
     return this.userService.toggleActivateUser(req.user.id);
   }
 
+  @Patch('role')
+  @UseGuards(AccessTokenGuard)
+  toggleUserRole(@Req() req): Promise<User> {
+    return this.userService.toggleUserRole(req.user.id);
+  }
+
   @Delete('delete')
   @UseGuards(AccessTokenGuard)
   deleteUser(@Req() req): Promise<void> {
