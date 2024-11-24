@@ -69,11 +69,11 @@ export class CardController {
 
   @Get('search/tag')
   async searchCardsByTags(
-    @Query('keyword') keywords: string,
+    @Query('keyword') keyword: string,
     @Query('take') take: string,
     @Query('cursor') cursor: string,
   ): Promise<{ list: Card[]; cursor: number }> {
-    return this.cardService.searchCardsByTags(keywords, +take, +cursor);
+    return this.cardService.searchCardsByTags(keyword, +take, +cursor);
   }
 
   @Patch(':id/answered')

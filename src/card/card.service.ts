@@ -127,7 +127,7 @@ export class CardService {
   ): Promise<{ list: Card[]; cursor: number }> {
     logger.log('===== card.service.getCards =====');
 
-    const cards = await this.cursorPaginateCard('list', take, cursor);
+    const cards = await this.cursorPaginateCard('all', take, cursor);
 
     if (!cards.list.length) {
       logger.log(`카드가 존재하지 않습니다.`);
@@ -224,7 +224,7 @@ export class CardService {
       cardsIds.forEach(card => idList.push(card.id));
 
       const cards = await this.cursorPaginateCard(
-        'list',
+        'tag',
         take,
         cursor,
         '',
@@ -352,17 +352,16 @@ export class CardService {
   }
 
   async cursorPaginateCard(
-    type: 'list' | 'my' | 'tag' | 'search',
+    type: 'all' | 'my' | 'tag' | 'search',
     take: number,
     cursor: number,
     keyword?: string,
     isAnswered?: boolean,
     ids?: number[],
   ): Promise<{ list: Card[]; cursor: number }> {
-    const queryBuilder = this.composeQueryBuilder(
+    const queryBuilder = this.composeQueryBuilder<Card>(
       this.cardRepository,
       type,
-      take,
       cursor,
       isAnswered,
       keyword,
@@ -400,8 +399,7 @@ export class CardService {
 
   composeQueryBuilder<T extends BaseModel>(
     repo: Repository<T>,
-    type: 'list' | 'my' | 'search' | 'tag',
-    take: number,
+    type: 'all' | 'my' | 'search' | 'tag',
     cursor: number,
     isAnswered?: boolean,
     keyword?: string,
@@ -409,7 +407,7 @@ export class CardService {
   ): SelectQueryBuilder<T> {
     const queryBuilder = repo.createQueryBuilder('card');
 
-    if (cursor && cursor >= 0) {
+    if (cursor) {
       if (type === 'my') {
         queryBuilder.where('card.isAnswered = :isAnswered', {
           isAnswered: isAnswered,
