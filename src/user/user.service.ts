@@ -83,7 +83,13 @@ export class UserService {
     const user = await this.userRepository
       .createQueryBuilder('user')
       .where('user.account = :account', { account })
-      .select(['user.id', 'user.name', 'user.account', 'user.password'])
+      .select([
+        'user.id',
+        'user.name',
+        'user.account',
+        'user.userRole',
+        'user.password',
+      ])
       .getOne();
 
     if (!user) {
