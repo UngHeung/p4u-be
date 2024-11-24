@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
 import { CreateTagDto } from './dto/create-tag.dto';
 import { Tag } from './entity/tag.entity';
+import { User } from 'src/user/entity/user.entity';
+import { UserRole } from 'src/user/enum/userRole.enum';
 
 const logger = new Logger();
 
@@ -121,8 +123,16 @@ export class TagService {
     return tag;
   }
 
-  async clearTag(): Promise<DeleteResult[]> {
+  async clearTag(user: User): Promise<DeleteResult[]> {
     logger.log(`===== tag.service.clearTag =====`);
+
+    console.log(user);
+
+    if (user.userRole !== UserRole.ADMIN) {
+      logger.warn(`${user.id} - 관리자 권한이 없습니다.`);
+      throw new ForbiddenException('관리자 권한이 없습니다.');
+    }
+
     const tags = await this.tagRepository
       .createQueryBuilder('tag')
       .leftJoin('tag.cards', 'cards')
@@ -136,15 +146,11 @@ export class TagService {
           return;
         }
 
-        const deleteTag = await this.tagRepository.delete(tag);
-
-        if (deleteTag) {
-          return deleteTag;
-        }
-
-        return deleteTag;
+        return await this.tagRepository.delete({ id: tag.id });
       }),
     );
+
+    logger.log('태그 삭제가 완료되었습니다.');
 
     return deleteTags;
   }

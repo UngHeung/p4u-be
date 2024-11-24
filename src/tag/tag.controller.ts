@@ -5,6 +5,7 @@ import {
   Get,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AccessTokenGuard } from 'src/auth/guards/bearer-token.guard';
@@ -35,7 +36,7 @@ export class TagController {
 
   @Delete('clear')
   @UseGuards(AccessTokenGuard)
-  deleteTags(): Promise<DeleteResult[]> {
-    return this.tagService.clearTag();
+  deleteTags(@Req() req): Promise<DeleteResult[]> {
+    return this.tagService.clearTag(req.user);
   }
 }

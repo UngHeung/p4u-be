@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -46,7 +47,7 @@ export class UserService {
     const user = await this.userRepository
       .createQueryBuilder('user')
       .where('user.id = :id', { id })
-      .select(['user.id', 'user.name'])
+      .select(['user.id', 'user.name', 'user.userRole', 'user.createdAt'])
       .getOne();
 
     if (!user) {
@@ -117,28 +118,35 @@ export class UserService {
     return user;
   }
 
-  async toggleUserRole(id: number): Promise<User> {
+  async toggleUserRole(user: User, id: number): Promise<User> {
     logger.log('===== user.service.toggleUserRole =====');
 
-    const user = await this.userRepository
+    if (user.userRole !== UserRole.ADMIN) {
+      logger.warn(`${user.id} - 관리자 권한이 없습니다.`);
+      throw new ForbiddenException('관리자 권한이 없습니다.');
+    }
+
+    const targetUser = await this.userRepository
       .createQueryBuilder('user')
       .where('id = :id', { id })
       .select(['user.id', 'user.userRole'])
       .getOne();
 
-    if (!user) {
+    if (!targetUser) {
       logger.warn(`${id} - 유저가 존재하지 않습니다.`);
       throw new NotFoundException('유저가 존재하지 않습니다.');
     }
 
-    user.userRole =
-      user.userRole === UserRole.USER ? UserRole.ADMIN : UserRole.USER;
+    targetUser.userRole =
+      targetUser.userRole === UserRole.USER ? UserRole.ADMIN : UserRole.USER;
 
-    await this.userRepository.save(user);
+    await this.userRepository.save(targetUser);
 
-    logger.log(`${id} - 유저 권한이 ${user.userRole}(으)로 변경되었습니다.`);
+    logger.log(
+      `${id} - 유저 권한이 ${targetUser.userRole}(으)로 변경되었습니다.`,
+    );
 
-    return user;
+    return targetUser;
   }
 
   async deleteUser(id: number): Promise<void> {

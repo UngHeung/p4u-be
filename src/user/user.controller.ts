@@ -1,4 +1,12 @@
-import { Controller, Delete, Get, Patch, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Patch,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AccessTokenGuard } from 'src/auth/guards/bearer-token.guard';
 import { User } from './entity/user.entity';
 import { UserService } from './user.service';
@@ -21,8 +29,14 @@ export class UserController {
 
   @Patch('role')
   @UseGuards(AccessTokenGuard)
-  toggleUserRole(@Req() req): Promise<User> {
-    return this.userService.toggleUserRole(req.user.id);
+  toggleUserRole(@Req() req, @Query('id') id: number): Promise<User> {
+    return this.userService.toggleUserRole(req.user, id);
+  }
+
+  @Patch('myrole')
+  @UseGuards(AccessTokenGuard)
+  toggleMyRole(@Req() req): Promise<User> {
+    return this.userService.toggleUserRole(req.user, req.user.id);
   }
 
   @Delete('delete')
