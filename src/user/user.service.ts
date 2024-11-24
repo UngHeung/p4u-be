@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { SignUpDto } from 'src/auth/dto/signUp.dto';
 import { Repository } from 'typeorm';
 import { User } from './entity/user.entity';
+import { UserRole } from './enum/userRole.enum';
 
 const logger = new Logger();
 
@@ -112,6 +113,30 @@ export class UserService {
     await this.userRepository.save(user);
 
     logger.log(`유저가 ${!user.isActivate ? '비' : ''}활성화 되었습니다.`);
+
+    return user;
+  }
+
+  async toggleUserRole(id: number): Promise<User> {
+    logger.log('===== user.service.toggleUserRole =====');
+
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .where('id = :id', { id })
+      .select(['user.id', 'user.userRole'])
+      .getOne();
+
+    if (!user) {
+      logger.warn(`${id} - 유저가 존재하지 않습니다.`);
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    user.userRole =
+      user.userRole === UserRole.USER ? UserRole.ADMIN : UserRole.USER;
+
+    await this.userRepository.save(user);
+
+    logger.log(`${id} - 유저 권한이 ${user.userRole}(으)로 변경되었습니다.`);
 
     return user;
   }

@@ -123,15 +123,26 @@ export class TagService {
 
   async clearTag(): Promise<DeleteResult[]> {
     logger.log(`===== tag.service.clearTag =====`);
-    const tags = await this.tagRepository.find({ select: ['id'] });
+    const tags = await this.tagRepository
+      .createQueryBuilder('tag')
+      .leftJoin('tag.cards', 'cards')
+      .select(['tag.id', 'cards.id'])
+      .getMany();
 
     const deleteTags = await Promise.all(
       tags.map(async tag => {
+        if (tag.cards.length) {
+          logger.warn(`${tag.id} - 태그를 사용하는 카드가 존재합니다.`);
+          return;
+        }
+
         const deleteTag = await this.tagRepository.delete(tag);
 
         if (deleteTag) {
           return deleteTag;
         }
+
+        return deleteTag;
       }),
     );
 
