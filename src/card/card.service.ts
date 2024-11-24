@@ -238,6 +238,49 @@ export class CardService {
     }
   }
 
+  // 랜덤 카드 하나를 반환
+  async getRandomCard(): Promise<Card> {
+    logger.log('===== card.service.getRandomCard =====');
+    const lastCardId = await this.cardRepository.find({
+      order: { id: 'DESC' },
+      select: ['id'],
+    });
+
+    logger.log(`카드 목록의 마지막 아이디 : ${lastCardId[0].id}`);
+
+    while (true) {
+      const randomId = Math.floor(Math.random() * lastCardId[0].id + 1);
+      logger.log(`랜덤 아이디 : ${randomId}`);
+
+      const card = await this.cardRepository
+        .createQueryBuilder('card')
+        .leftJoin('card.pickers', 'pickers')
+        .leftJoin('card.writer', 'writer')
+        .leftJoin('card.tags', 'tags')
+        .select([
+          'card.id',
+          'card.title',
+          'card.content',
+          'card.isAnonymity',
+          'card.isAnswered',
+          'tags.id',
+          'tags.keyword',
+          'writer.id',
+          'writer.name',
+          'pickers.id',
+        ])
+        .where('card.isAnswered = :isAnswered', { isAnswered: false })
+        .andWhere('card.id = :randomId', { randomId })
+        .getOne();
+
+      if (card) {
+        logger.log('카드가 존재합니다.');
+        logger.log('카드 반환이 완료되었습니다.');
+        return card;
+      }
+    }
+  }
+
   async patchCardAnswered(
     user: User,
     cardId: number,

@@ -76,6 +76,12 @@ export class CardController {
     return this.cardService.searchCardsByTags(keyword, +take, +cursor);
   }
 
+  @Get('random')
+  @UseGuards(AccessTokenGuard)
+  async getRandomCard(): Promise<Card> {
+    return this.cardService.getRandomCard();
+  }
+
   @Patch(':id/answered')
   @UseGuards(AccessTokenGuard)
   async patchCardAnswered(
