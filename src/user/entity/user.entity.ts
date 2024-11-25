@@ -53,4 +53,7 @@ export class User extends BaseModel {
 
   @ManyToMany(() => Card, card => card.pickers)
   pickCards: Card[];
+
+  @ManyToMany(() => Card, card => card.reporters)
+  reportCards: Card[];
 }

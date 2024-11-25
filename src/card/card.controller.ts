@@ -101,7 +101,25 @@ export class CardController {
     return this.cardService.togglePickedCard(req.user, id);
   }
 
-  @Delete('delete/:id')
+  @Patch(':id/report')
+  @UseGuards(AccessTokenGuard)
+  async reportCard(@Req() req, @Param('id') id: number): Promise<Card> {
+    return this.cardService.reportCard(req.user, id);
+  }
+
+  @Patch(':id/reporter/reset')
+  @UseGuards(AccessTokenGuard)
+  async resetReportedCard(@Param('id') id: number): Promise<Card> {
+    return this.cardService.resetReportedCard(id);
+  }
+
+  @Patch(':id/activate')
+  @UseGuards(AccessTokenGuard)
+  async toggleActivateCard(@Param('id') id: number): Promise<Card> {
+    return this.cardService.toggleActivateCard(id);
+  }
+
+  @Delete(':id/delete')
   @UseGuards(AccessTokenGuard)
   deleteCard(@Param('id') id: number): Promise<Card> {
     return this.cardService.deleteCard(id);

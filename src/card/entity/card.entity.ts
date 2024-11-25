@@ -26,6 +26,10 @@ export class Card extends BaseModel {
   @IsBoolean()
   isAnswered: boolean;
 
+  @Column({ nullable: false, default: true })
+  @IsBoolean()
+  isActive: boolean;
+
   @ManyToOne(() => User, user => user.cards)
   writer: User;
 
@@ -36,4 +40,8 @@ export class Card extends BaseModel {
   @ManyToMany(() => User, user => user.pickCards, { onDelete: 'CASCADE' })
   @JoinTable({ name: 'user_cards' })
   pickers: User[];
+
+  @ManyToMany(() => User, user => user.reportCards, { onDelete: 'CASCADE' })
+  @JoinTable({ name: 'user_report_cards' })
+  reporters: User[];
 }

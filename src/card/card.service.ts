@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -349,6 +350,101 @@ export class CardService {
     return card;
   }
 
+  async reportCard(user: User, id: number): Promise<Card> {
+    logger.log('===== card.service.reportCard =====');
+
+    const card = await this.cardRepository
+      .createQueryBuilder('card')
+      .leftJoin('card.reporters', 'reporters')
+      .where('card.id = :id', { id })
+      .select(['card.id', 'reporters.id'])
+      .getOne();
+
+    if (!card) {
+      logger.warn(`${id} - 카드가 존재하지 않습니다.`);
+      throw new NotFoundException('카드가 존재하지 않습니다.');
+    }
+
+    const reporters = card.reporters;
+    const currLen = reporters.length;
+
+    let newReporters = reporters.filter(reporter => reporter.id !== user.id);
+
+    if (currLen === newReporters.length) {
+      newReporters = [...reporters, user];
+      logger.log(`${user.id} - 카드에 새로운 reporter가 추가되었습니다.`);
+
+      if (newReporters.length >= 5) {
+        await this.toggleActivateCard(id, false);
+        logger.log(`${id} - 카드가 비활성화되었습니다.`);
+      }
+    } else {
+      logger.warn(`${user.id} - 이미 신고한 카드입니다.`);
+      throw new ConflictException('이미 신고한 카드입니다.');
+    }
+
+    card.reporters = newReporters;
+
+    this.cardRepository.save(card);
+    logger.log(`${id} - 카드에 새로운 정보가 갱신되었습니다.`);
+
+    return card;
+  }
+
+  async resetReportedCard(id: number): Promise<Card> {
+    logger.log('===== card.service.resetReportedCard =====');
+
+    const card = await this.cardRepository
+      .createQueryBuilder('card')
+      .leftJoin('card.reporters', 'reporters')
+      .where('card.id = :id', { id })
+      .select(['card.id', 'card.isActive', 'reporters.id'])
+      .getOne();
+
+    if (!card) {
+      logger.warn(`${id} - 카드가 존재하지 않습니다.`);
+      throw new NotFoundException('카드가 존재하지 않습니다.');
+    }
+
+    card.reporters = [];
+    card.isActive = true;
+
+    logger.log(`${id} - 카드의 reporter 목록이 초기화되었습니다.`);
+
+    await this.cardRepository.save(card);
+
+    return card;
+  }
+
+  async toggleActivateCard(id: number, isActive?: boolean): Promise<Card> {
+    logger.log('===== card.service.toggleActivateCard =====');
+
+    const card = await this.cardRepository
+      .createQueryBuilder('card')
+      .where('card.id = :id', { id })
+      .select(['card.id', 'card.isActive'])
+      .getOne();
+
+    if (!card) {
+      logger.warn(`${id} - 카드가 존재하지 않습니다.`);
+      throw new NotFoundException('카드가 존재하지 않습니다.');
+    }
+
+    if (isActive) {
+      card.isActive = isActive;
+    } else {
+      card.isActive = !card.isActive;
+    }
+
+    await this.cardRepository.save(card);
+
+    logger.log(
+      `${id} - 카드가 ${card.isActive ? '활성화' : '비활성화'}되었습니다.`,
+    );
+
+    return card;
+  }
+
   async deleteCard(id: number) {
     logger.log('===== card.service.deleteCard =====');
 
@@ -469,6 +565,12 @@ export class CardService {
       queryBuilder.andWhere(`card.id ${cursor >= 0 ? '<' : '>'} :cursor`, {
         cursor,
       });
+
+      if (type !== 'my') {
+        queryBuilder.andWhere('card.isActive = :isActive', {
+          isActive: true,
+        });
+      }
     }
 
     return queryBuilder;
