@@ -101,6 +101,12 @@ export class CardController {
     return this.cardService.togglePickedCard(req.user, id);
   }
 
+  @Patch(':id/report')
+  @UseGuards(AccessTokenGuard)
+  async toggleReportedCard(@Req() req, @Param('id') id: number): Promise<Card> {
+    return this.cardService.toggleReportedCard(req.user, id);
+  }
+
   @Delete('delete/:id')
   @UseGuards(AccessTokenGuard)
   deleteCard(@Param('id') id: number): Promise<Card> {
