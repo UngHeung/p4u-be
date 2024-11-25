@@ -103,11 +103,11 @@ export class CardController {
 
   @Patch(':id/report')
   @UseGuards(AccessTokenGuard)
-  async toggleReportedCard(@Req() req, @Param('id') id: number): Promise<Card> {
-    return this.cardService.toggleReportedCard(req.user, id);
+  async reportCard(@Req() req, @Param('id') id: number): Promise<Card> {
+    return this.cardService.reportCard(req.user, id);
   }
 
-  @Patch(':id/reset')
+  @Patch(':id/reporter/reset')
   @UseGuards(AccessTokenGuard)
   async resetReportedCard(@Param('id') id: number): Promise<Card> {
     return this.cardService.resetReportedCard(id);
@@ -115,14 +115,11 @@ export class CardController {
 
   @Patch(':id/activate')
   @UseGuards(AccessTokenGuard)
-  async toggleActivateCard(
-    @Param('id') id: number,
-    @Query('isActive') isActive: boolean,
-  ): Promise<Card> {
-    return this.cardService.toggleActivateCard(id, isActive);
+  async toggleActivateCard(@Param('id') id: number): Promise<Card> {
+    return this.cardService.toggleActivateCard(id);
   }
 
-  @Delete('delete/:id')
+  @Delete(':id/delete')
   @UseGuards(AccessTokenGuard)
   deleteCard(@Param('id') id: number): Promise<Card> {
     return this.cardService.deleteCard(id);

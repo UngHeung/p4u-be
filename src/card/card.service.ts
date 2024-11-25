@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -349,8 +350,8 @@ export class CardService {
     return card;
   }
 
-  async toggleReportedCard(user: User, id: number): Promise<Card> {
-    logger.log('===== card.service.toggleReportedCard =====');
+  async reportCard(user: User, id: number): Promise<Card> {
+    logger.log('===== card.service.reportCard =====');
 
     const card = await this.cardRepository
       .createQueryBuilder('card')
@@ -378,11 +379,8 @@ export class CardService {
         logger.log(`${id} - 카드가 비활성화되었습니다.`);
       }
     } else {
-      logger.log(`${user.id} - 카드에서 해당 reporter가 제거되었습니다.`);
-      if (newReporters.length < 5) {
-        await this.toggleActivateCard(id, true);
-        logger.log(`${id} - 카드가 활성화되었습니다.`);
-      }
+      logger.warn(`${user.id} - 이미 신고한 카드입니다.`);
+      throw new ConflictException('이미 신고한 카드입니다.');
     }
 
     card.reporters = newReporters;
@@ -418,7 +416,7 @@ export class CardService {
     return card;
   }
 
-  async toggleActivateCard(id: number, isActive: boolean): Promise<Card> {
+  async toggleActivateCard(id: number, isActive?: boolean): Promise<Card> {
     logger.log('===== card.service.toggleActivateCard =====');
 
     const card = await this.cardRepository
@@ -432,7 +430,11 @@ export class CardService {
       throw new NotFoundException('카드가 존재하지 않습니다.');
     }
 
-    card.isActive = isActive;
+    if (isActive) {
+      card.isActive = isActive;
+    } else {
+      card.isActive = !card.isActive;
+    }
 
     await this.cardRepository.save(card);
 
