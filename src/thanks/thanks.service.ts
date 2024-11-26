@@ -208,4 +208,67 @@ export class ThanksService {
     logger.log('감사글 삭제가 완료되었습니다.');
     return true;
   }
+
+  /**
+   * cursor pagination
+   */
+
+  async cursorPaginateThanks(
+    type: 'all' | 'my',
+    take: number,
+    cursor: number,
+    userId: number,
+    order: 'ASC' | 'DESC' = 'ASC',
+  ): Promise<{ list: Thanks[]; cursor: number }> {
+    const queryBuilder = this.composeQueryBuilder<Thanks>(
+      this.thanksRepository,
+      type,
+      cursor,
+      userId,
+      order,
+    );
+
+    queryBuilder
+      .leftJoin('thanks.writer', 'writer')
+      .select([
+        'thanks.id',
+        'thanks.content',
+        'thanks.createdAt',
+        'thanks.reactionsCount',
+        'writer.id',
+        'writer.name',
+      ])
+      .take(take + 1);
+
+    const list = await queryBuilder.getMany();
+    const hasNext = list.length > take;
+
+    if (hasNext) {
+      return { list: list.slice(0, take), cursor: list[list.length - 2].id };
+    } else {
+      return { list, cursor: null };
+    }
+  }
+
+  composeQueryBuilder<T extends BaseModel>(
+    repo: Repository<T>,
+    type: 'all' | 'my',
+    cursor: number,
+    userId: number,
+    order: 'ASC' | 'DESC' = 'ASC',
+  ): SelectQueryBuilder<T> {
+    const queryBuilder = repo.createQueryBuilder('thanks');
+
+    if (cursor) {
+      queryBuilder.where(`thanks.id ${order === 'ASC' ? '<' : '>'} :cursor`, {
+        cursor,
+      });
+
+      if (type === 'my') {
+        queryBuilder.andWhere('thanks.userId = :userId', { userId });
+      }
+    }
+
+    return queryBuilder;
+  }
 }
