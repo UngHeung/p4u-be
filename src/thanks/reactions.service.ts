@@ -93,4 +93,25 @@ export class ReactionsService {
 
     return reactions;
   }
+
+  async findMyReaction(user: User, id: number): Promise<Reaction> {
+    logger.log('===== thanks.service.findMyReaction =====');
+
+    const reaction = await this.reactionRepository
+      .createQueryBuilder('reaction')
+      .leftJoin('reaction.reactioner', 'reactioner')
+      .leftJoin('reaction.thanks', 'thanks')
+      .select(['reaction.id', 'reaction.type', 'thanks.id', 'reactioner.id'])
+      .where('reaction.id = :id', { id })
+      .andWhere('reactioner.id = :userId', { userId: user.id })
+      .getOne();
+
+    if (!reaction) {
+      logger.log('반응이 존재하지 않습니다.');
+      throw new NotFoundException('반응이 존재하지 않습니다.');
+    }
+
+    logger.log(`${reaction.id} - 반응 반환이 완료되었습니다.`);
+    return reaction;
+  }
 }
