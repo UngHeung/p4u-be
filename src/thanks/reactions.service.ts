@@ -161,4 +161,40 @@ export class ReactionsService {
 
     return updatedReaction;
   }
+
+  async deleteReaction(user: User, id: number): Promise<void> {
+    logger.log('===== thanks.service.deleteReaction =====');
+
+    const reaction = await this.findMyReaction(user, id);
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const deletedReaction = await this.reactionRepository.delete(reaction.id);
+
+    if (deletedReaction.affected === 0) {
+      logger.log('반응이 존재하지 않습니다.');
+      throw new NotFoundException('반응이 존재하지 않습니다.');
+    }
+
+    const updatedReactionsCount = await this.thanksService.updateReactionsCount(
+      reaction.thanks.id,
+      reaction.type,
+      false,
+    );
+
+    if (!updatedReactionsCount) {
+      logger.log('감사글 반응 수 업데이트에 실패하였습니다.');
+      await queryRunner.rollbackTransaction();
+      throw new NotFoundException('감사글 반응 수 업데이트에 실패하였습니다.');
+    }
+
+    logger.log('감사글 반응 수 업데이트가 완료되었습니다.');
+
+    await queryRunner.commitTransaction();
+
+    logger.log(`${reaction.id} - 반응이 삭제되었습니다.`);
+  }
 }
