@@ -52,4 +52,10 @@ export class ThanksController {
   ): Promise<Thanks> {
     return this.thanksService.updateThanks(req.user.id, id, thanks);
   }
+
+  @Delete(':id')
+  @UseGuards(AccessTokenGuard)
+  deleteThanks(@Req() req, @Param('id') id: number): Promise<boolean> {
+    return this.thanksService.deleteThanks(req.user.id, id);
+  }
 }
