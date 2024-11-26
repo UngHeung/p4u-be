@@ -37,4 +37,13 @@ export class ReactionsController {
   ): Promise<Reaction[]> {
     return await this.reactionsService.getReactionsByThanksId(id);
   }
+
+  @Get('find/:id')
+  @UseGuards(AccessTokenGuard)
+  async findMyReaction(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<Reaction> {
+    return await this.reactionsService.findMyReaction(req.user, id);
+  }
 }
