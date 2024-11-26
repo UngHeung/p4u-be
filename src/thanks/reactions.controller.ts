@@ -29,4 +29,12 @@ export class ReactionsController {
   ): Promise<Reaction> {
     return await this.reactionsService.createReaction(req.user, dto, id);
   }
+
+  @Get(':id')
+  @UseGuards(AccessTokenGuard)
+  async getReactionsByThanksId(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<Reaction[]> {
+    return await this.reactionsService.getReactionsByThanksId(id);
+  }
 }
