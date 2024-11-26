@@ -56,4 +56,13 @@ export class ReactionsController {
   ): Promise<Reaction> {
     return await this.reactionsService.updateReaction(req.user, dto, id);
   }
+
+  @Delete(':id')
+  @UseGuards(AccessTokenGuard)
+  async deleteReaction(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<void> {
+    await this.reactionsService.deleteReaction(req.user, id);
+  }
 }
