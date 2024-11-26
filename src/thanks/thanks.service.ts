@@ -96,4 +96,35 @@ export class ThanksService {
 
     return thanks;
   }
+
+  async updateThanks(
+    userId: number,
+    id: number,
+    dto: UpdateThanksDto,
+  ): Promise<Thanks> {
+    logger.log('===== thanks.service.updateThanks =====');
+
+    const target = await this.getThanks(id);
+
+    if (!target) {
+      logger.log('감사글이 존재하지 않습니다.');
+      throw new NotFoundException('감사글이 존재하지 않습니다.');
+    }
+
+    if (target.writer.id !== userId) {
+      logger.log('감사글 수정 권한이 없습니다.');
+      throw new ForbiddenException('감사글 수정 권한이 없습니다.');
+    }
+
+    const updatedThanks = await this.thanksRepository.update(id, dto);
+
+    if (!updatedThanks.affected) {
+      logger.log(`${id} - 감사글 업데이트에 실패하였습니다.`);
+      throw new NotFoundException('감사글 업데이트에 실패하였습니다.');
+    }
+
+    logger.log(`${id} - 감사글 수정이 완료되었습니다.`);
+
+    return target;
+  }
 }
