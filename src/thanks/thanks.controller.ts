@@ -36,4 +36,10 @@ export class ThanksController {
   ): Promise<{ list: Thanks[]; cursor: number }> {
     return this.thanksService.getThanksList(type, take, cursor, userId);
   }
+
+  @Get(':id')
+  @UseGuards(AccessTokenGuard)
+  getThanks(@Param('id') id: number): Promise<Thanks> {
+    return this.thanksService.getThanks(id);
+  }
 }
