@@ -3,6 +3,8 @@ import { Card } from 'src/card/entity/card.entity';
 import { BaseModel } from 'src/common/entity/base.entity';
 import { lengthValidationMessage } from 'src/common/validation/message/length-validation.message';
 import { stringValidationMessage } from 'src/common/validation/message/type-validation.message';
+import { Reaction } from 'src/thanks/entity/reaction.entity';
+import { Thanks } from 'src/thanks/entity/thanks.entity';
 import { Column, Entity, ManyToMany, OneToMany } from 'typeorm';
 import { UserRole } from '../enum/userRole.enum';
 
@@ -56,4 +58,10 @@ export class User extends BaseModel {
 
   @ManyToMany(() => Card, card => card.reporters)
   reportCards: Card[];
+
+  @OneToMany(() => Thanks, thanks => thanks.writer)
+  thanks: Thanks[];
+
+  @OneToMany(() => Reaction, reaction => reaction.reactioner)
+  reactions: Reaction[];
 }
