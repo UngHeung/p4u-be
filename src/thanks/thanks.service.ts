@@ -127,4 +127,32 @@ export class ThanksService {
 
     return target;
   }
+
+  async updateReactionsCount(
+    id: number,
+    type: ReactionType,
+    isAdd: boolean,
+  ): Promise<boolean> {
+    logger.log('===== thanks.service.updateReactionsCount =====');
+    const reactionsCount = await this.getReactionsCount(id);
+
+    if (isAdd) {
+      reactionsCount[type] += 1;
+    } else {
+      reactionsCount[type] -= 1;
+    }
+
+    const updatedThanks = await this.thanksRepository.update(id, {
+      reactionsCount,
+    });
+
+    if (!updatedThanks.affected) {
+      logger.log(`${id} - 감사글 반응 수 업데이트에 실패하였습니다.`);
+      throw new NotFoundException('감사글 반응 수 업데이트에 실패하였습니다.');
+    }
+
+    logger.log(`${id} - 감사글 반응 수 업데이트가 완료되었습니다.`);
+
+    return true;
+  }
 }
