@@ -185,4 +185,27 @@ export class ThanksService {
 
     return true;
   }
+
+  async deleteThanks(userId: number, id: number): Promise<boolean> {
+    logger.log('===== thanks.service.deleteThanks =====');
+
+    const existingThanks = await this.thanksRepository.findOne({
+      where: { id, writer: { id: userId } },
+    });
+
+    if (!existingThanks) {
+      logger.log('권한이 없거나 감사글이 존재하지 않습니다.');
+      throw new NotFoundException('권한이 없거나 감사글이 존재하지 않습니다.');
+    }
+
+    const deletedThanks = await this.thanksRepository.delete(id);
+
+    if (deletedThanks.affected === 0) {
+      logger.log('감사글이 존재하지 않습니다.');
+      throw new NotFoundException('감사글이 존재하지 않습니다.');
+    }
+
+    logger.log('감사글 삭제가 완료되었습니다.');
+    return true;
+  }
 }
