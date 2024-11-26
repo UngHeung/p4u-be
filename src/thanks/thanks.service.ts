@@ -155,4 +155,34 @@ export class ThanksService {
 
     return true;
   }
+
+  async changeReactionsCount(
+    id: number,
+    type: ReactionType,
+    newType: ReactionType,
+  ): Promise<boolean> {
+    logger.log('===== thanks.service.changeReactionsCount =====');
+    const currentReactionsCount = await this.getReactionsCount(id);
+
+    if (currentReactionsCount[type] === 0) {
+      logger.log('감사글 반응 수가 0입니다.');
+      throw new BadRequestException('감사글 반응 수가 0입니다.');
+    }
+
+    currentReactionsCount[type] -= 1;
+    currentReactionsCount[newType] += 1;
+
+    const updatedThanks = await this.thanksRepository.update(id, {
+      reactionsCount: currentReactionsCount,
+    });
+
+    if (!updatedThanks.affected) {
+      logger.log('감사글 반응 수 변경에 실패하였습니다.');
+      throw new NotFoundException('감사글 반응 수 변경에 실패하였습니다.');
+    }
+
+    logger.log('감사글 반응 수 변경이 완료되었습니다.');
+
+    return true;
+  }
 }
