@@ -42,4 +42,14 @@ export class ThanksController {
   getThanks(@Param('id') id: number): Promise<Thanks> {
     return this.thanksService.getThanks(id);
   }
+
+  @Put(':id')
+  @UseGuards(AccessTokenGuard)
+  updateThanks(
+    @Req() req,
+    @Param('id') id: number,
+    @Body() thanks: UpdateThanksDto,
+  ): Promise<Thanks> {
+    return this.thanksService.updateThanks(req.user.id, id, thanks);
+  }
 }
