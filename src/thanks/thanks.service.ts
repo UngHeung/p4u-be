@@ -68,4 +68,32 @@ export class ThanksService {
 
     return thanks.reactionsCount;
   }
+
+  async getThanks(id: number): Promise<Thanks> {
+    logger.log('===== thanks.service.getThanks =====');
+
+    const thanks = await this.thanksRepository
+      .createQueryBuilder('thanks')
+      .leftJoin('thanks.writer', 'writer')
+      .leftJoin('thanks.reactions', 'reactions')
+      .select([
+        'thanks.id',
+        'thanks.content',
+        'thanks.createdAt',
+        'thanks.reactionsCount',
+        'writer.id',
+        'writer.name',
+      ])
+      .where('thanks.id = :id', { id })
+      .getOne();
+
+    if (!thanks) {
+      logger.log('감사글이 존재하지 않습니다.');
+      throw new NotFoundException('감사글이 존재하지 않습니다.');
+    }
+
+    logger.log('감사글 반환이 완료되었습니다.');
+
+    return thanks;
+  }
 }
