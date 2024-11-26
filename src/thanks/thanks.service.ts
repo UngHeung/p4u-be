@@ -59,4 +59,13 @@ export class ThanksService {
 
     return thanks;
   }
+
+  async getReactionsCount(id: number): Promise<{ [key: string]: number }> {
+    logger.log('===== thanks.service.getReactionsCount =====');
+    const thanks = await this.getThanks(id);
+
+    logger.log('감사글 반응 수 반환이 완료되었습니다.');
+
+    return thanks.reactionsCount;
+  }
 }
