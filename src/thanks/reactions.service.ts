@@ -73,4 +73,24 @@ export class ReactionsService {
 
     return reaction;
   }
+
+  async getReactionsByThanksId(id: number): Promise<Reaction[]> {
+    logger.log('===== thanks.service.getReactionsByThanksId =====');
+
+    const reactions = await this.reactionRepository
+      .createQueryBuilder('reaction')
+      .leftJoin('reaction.thanks', 'thanks')
+      .select(['reaction.id', 'reaction.type'])
+      .where('thanks.id = :id', { id })
+      .getMany();
+
+    if (!reactions) {
+      logger.log('반응이 존재하지 않습니다.');
+      throw new NotFoundException('반응이 존재하지 않습니다.');
+    }
+
+    logger.log(`${id} - thanks의 반응 반환이 완료되었습니다.`);
+
+    return reactions;
+  }
 }
