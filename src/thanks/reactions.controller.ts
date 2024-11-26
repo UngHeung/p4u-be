@@ -46,4 +46,14 @@ export class ReactionsController {
   ): Promise<Reaction> {
     return await this.reactionsService.findMyReaction(req.user, id);
   }
+
+  @Patch(':id')
+  @UseGuards(AccessTokenGuard)
+  async updateReaction(
+    @Req() req,
+    @Body() dto: UpdateReactionDto,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<Reaction> {
+    return await this.reactionsService.updateReaction(req.user, dto, id);
+  }
 }
