@@ -25,4 +25,15 @@ export class ThanksController {
   createThanks(@Req() req, @Body() dto: CreateThanksDto): Promise<Thanks> {
     return this.thanksService.createThanks(req.user, dto);
   }
+
+  @Get()
+  @UseGuards(AccessTokenGuard)
+  getThanksList(
+    @Query('type') type: 'all' | 'my',
+    @Query('take') take: number,
+    @Query('cursor') cursor: number,
+    @Query('userId') userId?: number,
+  ): Promise<{ list: Thanks[]; cursor: number }> {
+    return this.thanksService.getThanksList(type, take, cursor, userId);
+  }
 }
