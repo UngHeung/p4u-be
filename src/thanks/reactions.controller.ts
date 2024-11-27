@@ -5,8 +5,8 @@ import {
   Get,
   Param,
   ParseIntPipe,
-  Patch,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -47,7 +47,7 @@ export class ReactionsController {
     return await this.reactionsService.findMyReaction(req.user, id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   @UseGuards(AccessTokenGuard)
   async updateReaction(
     @Req() req,

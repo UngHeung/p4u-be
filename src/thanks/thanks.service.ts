@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -43,15 +42,23 @@ export class ThanksService {
   }
 
   async getThanksList(
+    userId: number,
     type: 'all' | 'my',
     take: number,
     cursor: number,
-    userId: number,
+    order: 'ASC' | 'DESC' = 'ASC',
   ): Promise<{ list: Thanks[]; cursor: number }> {
     logger.log('===== thanks.service.getThanksList =====');
-    const thanks = await this.cursorPaginateThanks(type, take, cursor, userId);
+    const thanks = await this.cursorPaginateThanks(
+      type,
+      take,
+      cursor,
+      order,
+      userId,
+    );
 
     if (!thanks.list.length) {
+      logger.log('감사글이 존재하지 않습니다.');
       return { list: [], cursor: null };
     }
 
@@ -76,13 +83,17 @@ export class ThanksService {
       .createQueryBuilder('thanks')
       .leftJoin('thanks.writer', 'writer')
       .leftJoin('thanks.reactions', 'reactions')
+      .leftJoin('thanks.reports', 'reports')
       .select([
         'thanks.id',
         'thanks.content',
         'thanks.createdAt',
+        'thanks.updatedAt',
         'thanks.reactionsCount',
+        'thanks.isActive',
         'writer.id',
         'writer.name',
+        'reports.id',
       ])
       .where('thanks.id = :id', { id })
       .getOne();
@@ -166,11 +177,11 @@ export class ThanksService {
 
     if (currentReactionsCount[type] === 0) {
       logger.log('감사글 반응 수가 0입니다.');
-      throw new BadRequestException('감사글 반응 수가 0입니다.');
+      return false;
     }
 
-    currentReactionsCount[type] -= 1;
-    currentReactionsCount[newType] += 1;
+    --currentReactionsCount[type];
+    ++currentReactionsCount[newType];
 
     const updatedThanks = await this.thanksRepository.update(id, {
       reactionsCount: currentReactionsCount,
@@ -178,7 +189,7 @@ export class ThanksService {
 
     if (!updatedThanks.affected) {
       logger.log('감사글 반응 수 변경에 실패하였습니다.');
-      throw new NotFoundException('감사글 반응 수 변경에 실패하였습니다.');
+      return false;
     }
 
     logger.log('감사글 반응 수 변경이 완료되었습니다.');
@@ -195,14 +206,14 @@ export class ThanksService {
 
     if (!existingThanks) {
       logger.log('권한이 없거나 감사글이 존재하지 않습니다.');
-      throw new NotFoundException('권한이 없거나 감사글이 존재하지 않습니다.');
+      return false;
     }
 
     const deletedThanks = await this.thanksRepository.delete(id);
 
     if (deletedThanks.affected === 0) {
       logger.log('감사글이 존재하지 않습니다.');
-      throw new NotFoundException('감사글이 존재하지 않습니다.');
+      return false;
     }
 
     logger.log('감사글 삭제가 완료되었습니다.');
@@ -217,27 +228,32 @@ export class ThanksService {
     type: 'all' | 'my',
     take: number,
     cursor: number,
-    userId: number,
     order: 'ASC' | 'DESC' = 'ASC',
+    userId: number,
   ): Promise<{ list: Thanks[]; cursor: number }> {
     const queryBuilder = this.composeQueryBuilder<Thanks>(
       this.thanksRepository,
       type,
       cursor,
-      userId,
       order,
+      userId,
     );
 
     queryBuilder
       .leftJoin('thanks.writer', 'writer')
+      .leftJoin('thanks.reports', 'reports')
       .select([
         'thanks.id',
         'thanks.content',
         'thanks.createdAt',
+        'thanks.updatedAt',
         'thanks.reactionsCount',
+        'thanks.isActive',
         'writer.id',
         'writer.name',
+        'reports.id',
       ])
+      .orderBy('thanks.id', 'DESC')
       .take(take + 1);
 
     const list = await queryBuilder.getMany();
@@ -254,18 +270,25 @@ export class ThanksService {
     repo: Repository<T>,
     type: 'all' | 'my',
     cursor: number,
-    userId: number,
     order: 'ASC' | 'DESC' = 'ASC',
+    userId: number,
   ): SelectQueryBuilder<T> {
     const queryBuilder = repo.createQueryBuilder('thanks');
 
-    if (cursor) {
-      queryBuilder.where(`thanks.id ${order === 'ASC' ? '<' : '>'} :cursor`, {
-        cursor,
-      });
+    if (cursor !== null) {
+      if (cursor === -1) {
+        queryBuilder.where('thanks.id > :cursor', { cursor });
+      } else {
+        queryBuilder.where(
+          `thanks.id ${order === 'DESC' ? '>' : '<'} :cursor`,
+          {
+            cursor,
+          },
+        );
+      }
 
       if (type === 'my') {
-        queryBuilder.andWhere('thanks.userId = :userId', { userId });
+        queryBuilder.andWhere('writer.id = :userId', { userId });
       }
     }
 

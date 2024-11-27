@@ -1,4 +1,7 @@
-import { PickType } from '@nestjs/mapped-types';
-import { Thanks } from '../entity/thanks.entity';
+import { IsString, Length } from 'class-validator';
 
-export class CreateThanksDto extends PickType(Thanks, ['content']) {}
+export class CreateThanksDto {
+  @IsString()
+  @Length(2, 100)
+  content: string;
+}

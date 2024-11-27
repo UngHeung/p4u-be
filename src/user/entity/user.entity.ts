@@ -62,6 +62,9 @@ export class User extends BaseModel {
   @OneToMany(() => Thanks, thanks => thanks.writer)
   thanks: Thanks[];
 
+  @ManyToMany(() => Thanks, thanks => thanks.reports)
+  reports: Thanks[];
+
   @OneToMany(() => Reaction, reaction => reaction.reactioner)
   reactions: Reaction[];
 }
