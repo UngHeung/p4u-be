@@ -2,7 +2,15 @@ import { IsString, Length } from 'class-validator';
 import { BaseModel } from 'src/common/entity/base.entity';
 import { stringValidationMessage } from 'src/common/validation/message/type-validation.message';
 import { User } from 'src/user/entity/user.entity';
-import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Reaction } from './reaction.entity';
 
 @Entity({ name: 'thanks' })
@@ -14,6 +22,16 @@ export class Thanks extends BaseModel {
 
   @ManyToOne(() => User, user => user.thanks)
   writer: User;
+
+  @Column({ nullable: false, default: true })
+  isActive: boolean;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @ManyToMany(() => User, user => user.reports)
+  @JoinTable({ name: 'user_report_thanks' })
+  reports: User[];
 
   @OneToMany(() => Reaction, reaction => reaction.thanks)
   reactions: Reaction[];
