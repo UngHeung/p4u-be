@@ -20,21 +20,21 @@ import { ThanksService } from './thanks.service';
 export class ThanksController {
   constructor(private readonly thanksService: ThanksService) {}
 
-  @Post()
+  @Post('new')
   @UseGuards(AccessTokenGuard)
   createThanks(@Req() req, @Body() dto: CreateThanksDto): Promise<Thanks> {
     return this.thanksService.createThanks(req.user, dto);
   }
 
-  @Get()
+  @Get('list')
   @UseGuards(AccessTokenGuard)
   getThanksList(
+    @Req() req,
     @Query('type') type: 'all' | 'my',
     @Query('take') take: number,
     @Query('cursor') cursor: number,
-    @Query('userId') userId?: number,
   ): Promise<{ list: Thanks[]; cursor: number }> {
-    return this.thanksService.getThanksList(type, take, cursor, userId);
+    return this.thanksService.getThanksList(req.user.id, type, take, cursor);
   }
 
   @Get(':id')
@@ -48,9 +48,9 @@ export class ThanksController {
   updateThanks(
     @Req() req,
     @Param('id') id: number,
-    @Body() thanks: UpdateThanksDto,
+    @Body() dto: UpdateThanksDto,
   ): Promise<Thanks> {
-    return this.thanksService.updateThanks(req.user.id, id, thanks);
+    return this.thanksService.updateThanks(req.user.id, id, dto);
   }
 
   @Delete(':id')
