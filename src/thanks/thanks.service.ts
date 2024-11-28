@@ -28,7 +28,7 @@ export class ThanksService {
       writer: user,
       reactionsCount: {
         heart: 0,
-        thumbs_up: 0,
+        thumbsup: 0,
         clap: 0,
         smile: 0,
         party: 0,
