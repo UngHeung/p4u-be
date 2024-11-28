@@ -14,7 +14,6 @@ import { Thanks } from './entity/thanks.entity';
 import { ReactionType } from './enum/reactionType.enum';
 
 const logger = new Logger('ThanksService');
-
 @Injectable()
 export class ThanksService {
   constructor(
@@ -151,9 +150,16 @@ export class ThanksService {
     const reactionsCount = await this.getReactionsCount(id);
 
     if (isAdd) {
-      reactionsCount[type] += 1;
+      logger.log(`${id} - 감사글 반응 수 증가`);
+      ++reactionsCount[type];
     } else {
-      reactionsCount[type] -= 1;
+      logger.log(`${id} - 감사글 반응 수 감소`);
+      --reactionsCount[type];
+
+      if (reactionsCount[type] < 0) {
+        logger.log('감사글 반응 수가 0보다 작습니다.');
+        return false;
+      }
     }
 
     const updatedThanks = await this.thanksRepository.update(id, {
@@ -185,6 +191,11 @@ export class ThanksService {
 
     --currentReactionsCount[type];
     ++currentReactionsCount[newType];
+
+    if (currentReactionsCount[type] < 0 || currentReactionsCount[newType] < 0) {
+      logger.log('감사글 반응 수가 0보다 작습니다.');
+      return false;
+    }
 
     const updatedThanks = await this.thanksRepository.update(id, {
       reactionsCount: currentReactionsCount,
@@ -245,6 +256,14 @@ export class ThanksService {
     queryBuilder
       .leftJoin('thanks.writer', 'writer')
       .leftJoin('thanks.reports', 'reports')
+      .leftJoin(
+        'thanks.reactions',
+        'reactions',
+        'reactions.reactioner.id = :userId',
+        {
+          userId,
+        },
+      )
       .select([
         'thanks.id',
         'thanks.content',
@@ -255,6 +274,8 @@ export class ThanksService {
         'writer.id',
         'writer.name',
         'reports.id',
+        'reactions.id',
+        'reactions.type',
       ])
       .orderBy('thanks.id', 'DESC')
       .take(take + 1);
