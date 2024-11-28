@@ -27,11 +27,11 @@ export class ThanksService {
       ...dto,
       writer: user,
       reactionsCount: {
-        HEART: 0,
-        THUMBS_UP: 0,
-        CLAP: 0,
-        SMILE: 0,
-        PARTY: 0,
+        heart: 0,
+        thumbs_up: 0,
+        clap: 0,
+        smile: 0,
+        party: 0,
       } as { [key: string]: number },
     });
 

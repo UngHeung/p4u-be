@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -31,15 +32,15 @@ export class ThanksController {
   getThanksList(
     @Req() req,
     @Query('type') type: 'all' | 'my',
-    @Query('take') take: number,
-    @Query('cursor') cursor: number,
+    @Query('take', ParseIntPipe) take: number,
+    @Query('cursor', ParseIntPipe) cursor: number,
   ): Promise<{ list: Thanks[]; cursor: number }> {
     return this.thanksService.getThanksList(req.user.id, type, take, cursor);
   }
 
   @Get(':id')
   @UseGuards(AccessTokenGuard)
-  getThanks(@Param('id') id: number): Promise<Thanks> {
+  getThanks(@Param('id', ParseIntPipe) id: number): Promise<Thanks> {
     return this.thanksService.getThanks(id);
   }
 
@@ -47,7 +48,7 @@ export class ThanksController {
   @UseGuards(AccessTokenGuard)
   updateThanks(
     @Req() req,
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateThanksDto,
   ): Promise<Thanks> {
     return this.thanksService.updateThanks(req.user.id, id, dto);
@@ -55,7 +56,10 @@ export class ThanksController {
 
   @Delete(':id')
   @UseGuards(AccessTokenGuard)
-  deleteThanks(@Req() req, @Param('id') id: number): Promise<boolean> {
+  deleteThanks(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<boolean> {
     return this.thanksService.deleteThanks(req.user.id, id);
   }
 }

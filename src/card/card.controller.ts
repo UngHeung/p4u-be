@@ -31,25 +31,25 @@ export class CardController {
   @UseGuards(AccessTokenGuard)
   async getCardsByWriterId(
     @Req() req,
-    @Query('take') take: string,
-    @Query('cursor') cursor: string,
+    @Query('take', ParseIntPipe) take: number,
+    @Query('cursor', ParseIntPipe) cursor: number,
   ): Promise<{ list: Card[]; cursor: number }> {
-    return this.cardService.getCardsByWriterId(req.user.id, +take, +cursor);
+    return this.cardService.getCardsByWriterId(req.user.id, take, cursor);
   }
 
   @Get()
   async getCards(
-    @Query('take') take: string,
-    @Query('cursor') cursor: string,
+    @Query('take', ParseIntPipe) take: number,
+    @Query('cursor', ParseIntPipe) cursor: number,
   ): Promise<{ list: Card[]; cursor: number }> {
-    return this.cardService.getCards(+take, +cursor);
+    return this.cardService.getCards(take, cursor);
   }
 
   @Get('answered')
   async getCardsByAnswered(
     @Query('answered') answered: boolean,
-    @Query('take') take: string,
-    @Query('cursor') cursor: string,
+    @Query('take', ParseIntPipe) take: number,
+    @Query('cursor', ParseIntPipe) cursor: number,
   ): Promise<{ list: Card[]; cursor: number }> {
     return this.cardService.getCardsByAnswered(answered, +take, +cursor);
   }
@@ -57,8 +57,8 @@ export class CardController {
   @Get('search')
   async searchCardsByKeyword(
     @Query('keyword') keyword: string,
-    @Query('take') take: string,
-    @Query('cursor') cursor: string,
+    @Query('take', ParseIntPipe) take: number,
+    @Query('cursor', ParseIntPipe) cursor: number,
   ): Promise<{ list: Card[]; cursor: number }> {
     return this.cardService.searchCardsByKeyword(
       keyword.trim(),
@@ -70,10 +70,10 @@ export class CardController {
   @Get('search/tag')
   async searchCardsByTags(
     @Query('keyword') keyword: string,
-    @Query('take') take: string,
-    @Query('cursor') cursor: string,
+    @Query('take', ParseIntPipe) take: number,
+    @Query('cursor', ParseIntPipe) cursor: number,
   ): Promise<{ list: Card[]; cursor: number }> {
-    return this.cardService.searchCardsByTags(keyword, +take, +cursor);
+    return this.cardService.searchCardsByTags(keyword, take, cursor);
   }
 
   @Get('random')
@@ -103,25 +103,32 @@ export class CardController {
 
   @Patch(':id/report')
   @UseGuards(AccessTokenGuard)
-  async reportCard(@Req() req, @Param('id') id: number): Promise<Card> {
+  async reportCard(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<Card> {
     return this.cardService.reportCard(req.user, id);
   }
 
   @Patch(':id/reporter/reset')
   @UseGuards(AccessTokenGuard)
-  async resetReportedCard(@Param('id') id: number): Promise<Card> {
+  async resetReportedCard(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<Card> {
     return this.cardService.resetReportedCard(id);
   }
 
   @Patch(':id/activate')
   @UseGuards(AccessTokenGuard)
-  async toggleActivateCard(@Param('id') id: number): Promise<Card> {
+  async toggleActivateCard(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<Card> {
     return this.cardService.toggleActivateCard(id);
   }
 
   @Delete(':id/delete')
   @UseGuards(AccessTokenGuard)
-  deleteCard(@Param('id') id: number): Promise<Card> {
+  deleteCard(@Param('id', ParseIntPipe) id: number): Promise<Card> {
     return this.cardService.deleteCard(id);
   }
 }
