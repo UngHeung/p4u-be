@@ -9,7 +9,6 @@ import {
   ManyToMany,
   ManyToOne,
   OneToMany,
-  UpdateDateColumn,
 } from 'typeorm';
 import { Reaction } from './reaction.entity';
 

@@ -1,6 +1,6 @@
 export enum ReactionType {
   HEART = 'heart',
-  THUMBS_UP = 'thumbs_up',
+  THUMBSUP = 'thumbsup',
   CLAP = 'clap',
   SMILE = 'smile',
   PARTY = 'party',
