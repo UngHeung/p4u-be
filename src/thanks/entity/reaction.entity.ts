@@ -10,7 +10,7 @@ export class Reaction extends BaseModel {
   @Column({
     type: 'enum',
     enum: ReactionType,
-    default: ReactionType.THUMBS_UP,
+    default: ReactionType.THUMBSUP,
     nullable: false,
   })
   type: ReactionType;
