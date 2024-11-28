@@ -26,7 +26,7 @@ export class Thanks extends BaseModel {
   @Column({ nullable: false, default: true })
   isActive: boolean;
 
-  @UpdateDateColumn()
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
 
   @ManyToMany(() => User, user => user.reports)

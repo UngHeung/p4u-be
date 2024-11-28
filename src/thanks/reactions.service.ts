@@ -28,51 +28,55 @@ export class ReactionsService {
     dto: CreateReactionDto,
     thanksId: number,
   ): Promise<Reaction> {
-    logger.log('===== reactions.service.createReaction =====');
-
-    const existingReaction = await this.reactionRepository.exists({
-      where: {
-        reactioner: { id: user.id },
-        thanks: { id: thanksId },
-      },
-      relations: ['reactioner', 'thanks'],
-    });
-
-    if (existingReaction) {
-      logger.warn('이미 반응을 남겼습니다.');
-      throw new ConflictException('이미 반응을 남겼습니다.');
-    }
-
-    const reaction = this.reactionRepository.create({
-      type: dto.type,
-      reactioner: user,
-      thanks: { id: thanksId },
-    });
+    logger.log('===== thanks.service.createReaction =====');
 
     const queryRunner = this.dataSource.createQueryRunner();
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    try {
+      const existingReaction = await this.reactionRepository.exists({
+        where: {
+          reactioner: { id: user.id },
+          thanks: { id: thanksId },
+        },
+        relations: ['reactioner', 'thanks'],
+      });
 
-    const updateReactionsCount = await this.thanksService.updateReactionsCount(
-      thanksId,
-      dto.type,
-      true,
-    );
+      if (existingReaction) {
+        throw new ConflictException('이미 반응을 남겼습니다.');
+      }
 
-    if (!updateReactionsCount) {
-      logger.log('감사글 반응 수 업데이트에 실패하였습니다.');
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      const reaction = this.reactionRepository.create({
+        type: dto.type,
+        reactioner: user,
+        thanks: { id: thanksId },
+      });
+
+      const updateReactionsCount =
+        await this.thanksService.updateReactionsCount(thanksId, dto.type, true);
+
+      if (!updateReactionsCount) {
+        throw new NotFoundException(
+          '감사글 반응 수 업데이트에 실패하였습니다.',
+        );
+      }
+
+      logger.log('감사글 반응 수 업데이트가 완료되었습니다.');
+
+      await this.reactionRepository.save(reaction);
+      logger.log('반응이 생성되었습니다.');
+
+      await queryRunner.commitTransaction();
+
+      return reaction;
+    } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new NotFoundException('감사글 반응 수 업데이트에 실패하였습니다.');
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-    logger.log('반응 수 업데이트가 완료되었습니다.');
-
-    await this.reactionRepository.save(reaction);
-    logger.log('반응이 생성되었습니다.');
-
-    await queryRunner.commitTransaction();
-
-    return reaction;
   }
 
   async getReactionsByThanksId(id: number): Promise<Reaction[]> {
@@ -121,101 +125,97 @@ export class ReactionsService {
     dto: UpdateReactionDto,
     id: number,
   ): Promise<Reaction> {
-    logger.log('===== thanks.service.updateReaction =====');
-    const updatedReaction = await this.reactionRepository
-      .createQueryBuilder('reaction')
-      .leftJoin('reaction.thanks', 'thanks')
-      .leftJoin('reaction.reactioner', 'reactioner')
-      .select(['reaction.id', 'reaction.type', 'thanks.id', 'reactioner.id'])
-      .where('reaction.id = :id', { id })
-      .andWhere('reactioner.id = :userId', { userId: user.id })
-      .getOne();
-
-    if (!updatedReaction) {
-      logger.log('반응이 존재하지 않습니다.');
-      throw new NotFoundException('반응이 존재하지 않습니다.');
-    }
-
     const queryRunner = this.dataSource.createQueryRunner();
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    try {
+      const updatedReaction = await this.reactionRepository
+        .createQueryBuilder('reaction')
+        .leftJoin('reaction.thanks', 'thanks')
+        .leftJoin('reaction.reactioner', 'reactioner')
+        .select(['reaction.id', 'reaction.type', 'thanks.id', 'reactioner.id'])
+        .where('reaction.id = :id', { id })
+        .andWhere('reactioner.id = :userId', { userId: user.id })
+        .getOne();
 
-    const currentReactionsCount = await this.thanksService.changeReactionsCount(
-      updatedReaction.thanks.id,
-      updatedReaction.type,
-      dto.type,
-    );
+      if (!updatedReaction) {
+        throw new NotFoundException('반응이 존재하지 않습니다.');
+      }
 
-    console.log(currentReactionsCount);
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
 
-    if (!currentReactionsCount) {
-      logger.log('감사글 반응 수 업데이트에 실패하였습니다.');
-      await queryRunner.rollbackTransaction();
-      throw new NotFoundException('감사글 반응 수 업데이트에 실패하였습니다.');
-    }
+      const currentReactionsCount =
+        await this.thanksService.changeReactionsCount(
+          updatedReaction.thanks.id,
+          updatedReaction.type,
+          dto.type,
+        );
 
-    logger.log('반응 수 업데이트가 완료되었습니다.');
+      if (!currentReactionsCount) {
+        throw new NotFoundException(
+          '감사글 반응 수 업데이트에 실패하였습니다.',
+        );
+      }
 
-    if (dto.type === updatedReaction.type) {
-      await this.deleteReaction(user, id);
+      if (dto.type === updatedReaction.type) {
+        await this.deleteReaction(user, id);
+
+        logger.log('반응이 삭제되었습니다.');
+
+        await queryRunner.commitTransaction();
+        return updatedReaction;
+      }
+
+      updatedReaction.type = dto.type;
+      await this.reactionRepository.save(updatedReaction);
+
+      logger.log('반응이 업데이트되었습니다.');
 
       await queryRunner.commitTransaction();
+
       return updatedReaction;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    updatedReaction.type = dto.type;
-
-    await this.reactionRepository.save(updatedReaction);
-
-    await queryRunner.commitTransaction();
-
-    logger.log(`${updatedReaction.id} - 반응이 수정되었습니다.`);
-
-    return updatedReaction;
   }
 
   async deleteReaction(user: User, id: number): Promise<void> {
     logger.log('===== thanks.service.deleteReaction =====');
 
-    const reaction = await this.findMyReaction(user, id);
-
     const queryRunner = this.dataSource.createQueryRunner();
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    try {
+      const reaction = await this.findMyReaction(user, id);
 
-    const deletedReaction = await this.reactionRepository
-      .createQueryBuilder('reaction')
-      .leftJoin('reaction.reactioner', 'reactioner')
-      .leftJoin('reaction.thanks', 'thanks')
-      .where('reaction.id = :id', { id })
-      .andWhere('reactioner.id = :userId', { userId: user.id })
-      .getOne();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
 
-    if (!deletedReaction) {
-      logger.log('반응이 존재하지 않습니다.');
-      throw new NotFoundException('반응이 존재하지 않습니다.');
-    }
+      const updatedReactionsCount =
+        await this.thanksService.updateReactionsCount(
+          reaction.thanks.id,
+          reaction.type,
+          false,
+        );
 
-    const updatedReactionsCount = await this.thanksService.updateReactionsCount(
-      reaction.thanks.id,
-      reaction.type,
-      false,
-    );
+      if (!updatedReactionsCount) {
+        throw new NotFoundException(
+          '감사글 반응 수 업데이트에 실패하였습니다.',
+        );
+      }
 
-    if (!updatedReactionsCount) {
-      logger.log('감사글 반응 수 업데이트에 실패하였습니다.');
+      await this.reactionRepository.delete(reaction.id);
+
+      logger.log('반응이 삭제되었습니다.');
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new NotFoundException('감사글 반응 수 업데이트에 실패하였습니다.');
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    logger.log('감사글 반응 수 업데이트가 완료되었습니다.');
-
-    await this.reactionRepository.delete(reaction.id);
-
-    await queryRunner.commitTransaction();
-
-    logger.log(`${reaction.id} - 반응이 삭제되었습니다.`);
   }
 }
