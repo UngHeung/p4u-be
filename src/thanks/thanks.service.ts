@@ -127,7 +127,10 @@ export class ThanksService {
       throw new ForbiddenException('감사글 수정 권한이 없습니다.');
     }
 
-    const updatedThanks = await this.thanksRepository.update(id, dto);
+    const updatedThanks = await this.thanksRepository.update(id, {
+      ...dto,
+      updatedAt: new Date(),
+    });
 
     if (!updatedThanks.affected) {
       logger.log(`${id} - 감사글 업데이트에 실패하였습니다.`);
