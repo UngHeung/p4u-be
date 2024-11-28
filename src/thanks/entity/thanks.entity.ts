@@ -35,6 +35,10 @@ export class Thanks extends BaseModel {
   @OneToMany(() => Reaction, reaction => reaction.thanks)
   reactions: Reaction[];
 
-  @Column({ nullable: false, type: 'json' })
+  @Column({
+    nullable: false,
+    type: 'json',
+    default: '{ "heart": 0, "thumbsup": 0, "clap": 0, "smile": 0, "party": 0 }',
+  })
   reactionsCount: { [key: string]: number };
 }

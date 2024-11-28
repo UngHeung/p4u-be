@@ -26,13 +26,6 @@ export class ThanksService {
     const createdThanks = await this.thanksRepository.save({
       ...dto,
       writer: user,
-      reactionsCount: {
-        heart: 0,
-        thumbsup: 0,
-        clap: 0,
-        smile: 0,
-        party: 0,
-      } as { [key: string]: number },
     });
 
     logger.log('감사글 생성이 완료되었습니다.');
