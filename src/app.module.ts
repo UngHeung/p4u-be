@@ -9,6 +9,9 @@ import { Card } from './card/entity/card.entity';
 import { CommonModule } from './common/common.module';
 import { Tag } from './tag/entity/tag.entity';
 import { TagModule } from './tag/tag.module';
+import { Reaction } from './thanks/entity/reaction.entity';
+import { Thanks } from './thanks/entity/thanks.entity';
+import { ThanksModule } from './thanks/thanks.module';
 import { User } from './user/entity/user.entity';
 import { UserModule } from './user/user.module';
 
@@ -27,13 +30,14 @@ import { UserModule } from './user/user.module';
       database: process.env.DB_DATABASE,
       autoLoadEntities: true,
       synchronize: true,
-      entities: [User, Card, Tag],
+      entities: [User, Card, Tag, Thanks, Reaction],
     }),
     UserModule,
     AuthModule,
     CardModule,
     CommonModule,
     TagModule,
+    ThanksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -14,6 +14,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+  app.setGlobalPrefix('p4u-api');
   app.enableCors({
     origin: [
       'http://localhost:3000',
@@ -22,6 +23,7 @@ async function bootstrap() {
     ],
     credentials: true,
   });
+
   await app.listen(3000);
 }
 bootstrap();
