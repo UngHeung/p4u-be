@@ -182,11 +182,16 @@ export class ThanksService {
       return false;
     }
 
-    const updatedThanks = await this.thanksRepository.update(thanksId, {
-      isActive,
-    });
+    const target = await this.getThanks(thanksId);
 
-    if (!updatedThanks.affected) {
+    if (!target) {
+      logger.log('감사글이 존재하지 않습니다.');
+      return false;
+    }
+
+    const updatedThanks = await this.changeActiveThanks(user, target, isActive);
+
+    if (!updatedThanks) {
       logger.log('감사글 활성화 상태 변경에 실패하였습니다.');
       return false;
     }
@@ -221,6 +226,15 @@ export class ThanksService {
     }
 
     logger.log('감사글 신고 업데이트가 완료되었습니다.');
+
+    if (target.reports.length >= 3) {
+      const result = await this.changeActiveThanks(user, target, false);
+
+      if (!result) {
+        logger.log('감사글 활성화 상태 변경에 실패하였습니다.');
+        return false;
+      }
+    }
 
     return true;
   }
@@ -280,6 +294,32 @@ export class ThanksService {
     }
 
     logger.log('감사글 삭제가 완료되었습니다.');
+    return true;
+  }
+
+  async changeActiveThanks(
+    user: User,
+    thanks: Thanks,
+    isActive: boolean,
+  ): Promise<boolean> {
+    logger.log('===== thanks.service.changeActiveThanks =====');
+
+    if (user.userRole !== UserRole.ADMIN) {
+      logger.log('감사글 활성화 상태 변경 권한이 없습니다.');
+      return false;
+    }
+
+    const updatedThanks = await this.thanksRepository.update(thanks.id, {
+      isActive: !thanks.isActive,
+    });
+
+    if (!updatedThanks.affected) {
+      logger.log('감사글 활성화 상태 변경에 실패하였습니다.');
+      return false;
+    }
+
+    logger.log('감사글 활성화 상태 변경이 완료되었습니다.');
+
     return true;
   }
 
