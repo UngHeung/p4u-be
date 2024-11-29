@@ -1,13 +1,16 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BaseModel } from 'src/common/entity/base.entity';
 import { User } from 'src/user/entity/user.entity';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { UserRole } from 'src/user/enum/userRole.enum';
+import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { CreateThanksDto } from './dto/createThanks.dto';
 import { UpdateThanksDto } from './dto/updateThanks.dto';
 import { Thanks } from './entity/thanks.entity';
@@ -19,6 +22,7 @@ export class ThanksService {
   constructor(
     @InjectRepository(Thanks)
     private readonly thanksRepository: Repository<Thanks>,
+    private dataSource: DataSource,
   ) {}
 
   async createThanks(user: User, dto: CreateThanksDto): Promise<Thanks> {
@@ -35,7 +39,7 @@ export class ThanksService {
 
   async getThanksList(
     userId: number,
-    type: 'all' | 'my',
+    type: 'all' | 'my' | 'inactive',
     take: number,
     cursor: number,
     order: 'ASC' | 'DESC' = 'ASC',
@@ -169,6 +173,122 @@ export class ThanksService {
     return true;
   }
 
+  async toggleThanksActive(
+    user: User,
+    thanksId: number,
+    isActive: boolean,
+  ): Promise<boolean> {
+    logger.log('===== thanks.service.toggleThanksActive =====');
+
+    if (user.userRole !== UserRole.ADMIN) {
+      logger.log('감사글 활성화 상태 변경 권한이 없습니다.');
+      return false;
+    }
+
+    const target = await this.getThanks(thanksId);
+
+    if (!target) {
+      logger.log('감사글이 존재하지 않습니다.');
+      return false;
+    }
+
+    const updatedThanks = await this.changeActiveThanks(user, target, isActive);
+
+    if (!updatedThanks) {
+      logger.log('감사글 활성화 상태 변경에 실패하였습니다.');
+      return false;
+    }
+
+    logger.log('감사글 활성화 상태 변경이 완료되었습니다.');
+
+    return true;
+  }
+
+  async updateReportThanks(user: User, thanksId: number): Promise<boolean> {
+    logger.log('===== thanks.service.updateReportThanks =====');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    const target = await this.thanksRepository
+      .createQueryBuilder('thanks')
+      .leftJoin('thanks.reports', 'reports')
+      .select(['thanks.id', 'reports.id'])
+      .where('thanks.id = :thanksId', { thanksId })
+      .getOne();
+
+    if (!target) {
+      logger.log('감사글이 존재하지 않습니다.');
+      throw new NotFoundException('감사글이 존재하지 않습니다.');
+    }
+
+    if (target.reports.some(report => report.id === user.id)) {
+      logger.log('이미 신고한 감사글입니다.');
+      throw new BadRequestException('이미 신고한 감사글입니다.');
+    }
+
+    target.reports.push(user);
+
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      await this.thanksRepository.save(target);
+
+      logger.log('감사글 신고 업데이트가 완료되었습니다.');
+
+      if (target.reports.length >= 3) {
+        const result = await this.changeActiveThanks(user, target, false);
+
+        if (!result) {
+          logger.log('감사글 활성화 상태 변경에 실패하였습니다.');
+          throw new InternalServerErrorException(
+            '감사글 활성화 상태 변경에 실패하였습니다.',
+          );
+        }
+      }
+
+      return true;
+    } catch (error) {
+      logger.log('감사글 신고 업데이트에 실패하였습니다.');
+      throw new InternalServerErrorException(
+        '감사글 신고 업데이트에 실패하였습니다.',
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async resetReportThanks(user: User, thanksId: number): Promise<boolean> {
+    logger.log('===== thanks.service.resetReportThanks =====');
+
+    if (user.userRole !== UserRole.ADMIN) {
+      logger.log('감사글 신고 초기화 권한이 없습니다.');
+      return false;
+    }
+
+    const target = await this.thanksRepository
+      .createQueryBuilder('thanks')
+      .leftJoin('thanks.reports', 'reports')
+      .select(['thanks.id', 'reports.id'])
+      .where('thanks.id = :thanksId', { thanksId })
+      .getOne();
+
+    if (!target) {
+      logger.log('감사글이 존재하지 않습니다.');
+      return false;
+    }
+
+    target.reports = [];
+    if (!target.isActive) {
+      target.isActive = true;
+    }
+
+    await this.thanksRepository.save(target);
+
+    logger.log('감사글 신고 초기화가 완료되었습니다.');
+    return true;
+  }
+
   async changeReactionsCount(
     id: number,
     type: ReactionType,
@@ -227,12 +347,38 @@ export class ThanksService {
     return true;
   }
 
+  async changeActiveThanks(
+    user: User,
+    thanks: Thanks,
+    isActive: boolean,
+  ): Promise<boolean> {
+    logger.log('===== thanks.service.changeActiveThanks =====');
+
+    if (user.userRole !== UserRole.ADMIN) {
+      logger.log('감사글 활성화 상태 변경 권한이 없습니다.');
+      return false;
+    }
+
+    const updatedThanks = await this.thanksRepository.update(thanks.id, {
+      isActive: !thanks.isActive,
+    });
+
+    if (!updatedThanks.affected) {
+      logger.log('감사글 활성화 상태 변경에 실패하였습니다.');
+      return false;
+    }
+
+    logger.log('감사글 활성화 상태 변경이 완료되었습니다.');
+
+    return true;
+  }
+
   /**
    * cursor pagination
    */
 
   async cursorPaginateThanks(
-    type: 'all' | 'my',
+    type: 'all' | 'my' | 'inactive',
     take: number,
     cursor: number,
     order: 'ASC' | 'DESC' = 'ASC',
@@ -285,7 +431,7 @@ export class ThanksService {
 
   composeQueryBuilder<T extends BaseModel>(
     repo: Repository<T>,
-    type: 'all' | 'my',
+    type: 'all' | 'my' | 'inactive',
     cursor: number,
     order: 'ASC' | 'DESC' = 'ASC',
     userId: number,
@@ -306,6 +452,14 @@ export class ThanksService {
 
       if (type === 'my') {
         queryBuilder.andWhere('writer.id = :userId', { userId });
+      } else if (type === 'inactive') {
+        queryBuilder.andWhere('thanks.isActive = :isActive', {
+          isActive: false,
+        });
+      } else {
+        queryBuilder.andWhere('thanks.isActive = :isActive', {
+          isActive: true,
+        });
       }
     }
 

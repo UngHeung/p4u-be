@@ -39,10 +39,12 @@ export class CardController {
 
   @Get()
   async getCards(
+    @Query('type')
+    type: 'all' | 'inactive' = 'all',
     @Query('take', ParseIntPipe) take: number,
     @Query('cursor', ParseIntPipe) cursor: number,
   ): Promise<{ list: Card[]; cursor: number }> {
-    return this.cardService.getCards(take, cursor);
+    return this.cardService.getCards(type, take, cursor);
   }
 
   @Get('answered')

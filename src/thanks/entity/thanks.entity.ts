@@ -28,7 +28,7 @@ export class Thanks extends BaseModel {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
 
-  @ManyToMany(() => User, user => user.reports)
+  @ManyToMany(() => User, user => user.reports, { onDelete: 'CASCADE' })
   @JoinTable({ name: 'user_report_thanks' })
   reports: User[];
 
