@@ -74,6 +74,15 @@ export class ThanksController {
     return this.thanksService.updateReportThanks(req.user, id);
   }
 
+  @Patch(':id/report/reset')
+  @UseGuards(AccessTokenGuard)
+  resetReportThanks(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<boolean> {
+    return this.thanksService.resetReportThanks(req.user, id);
+  }
+
   @Delete(':id')
   @UseGuards(AccessTokenGuard)
   deleteThanks(
