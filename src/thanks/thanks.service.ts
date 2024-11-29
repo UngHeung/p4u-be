@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { BaseModel } from 'src/common/entity/base.entity';
 import { User } from 'src/user/entity/user.entity';
+import { UserRole } from 'src/user/enum/userRole.enum';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { CreateThanksDto } from './dto/createThanks.dto';
 import { UpdateThanksDto } from './dto/updateThanks.dto';
@@ -35,7 +36,7 @@ export class ThanksService {
 
   async getThanksList(
     userId: number,
-    type: 'all' | 'my',
+    type: 'all' | 'my' | 'inactive',
     take: number,
     cursor: number,
     order: 'ASC' | 'DESC' = 'ASC',
@@ -169,6 +170,61 @@ export class ThanksService {
     return true;
   }
 
+  async toggleThanksActive(
+    user: User,
+    thanksId: number,
+    isActive: boolean,
+  ): Promise<boolean> {
+    logger.log('===== thanks.service.toggleThanksActive =====');
+
+    if (user.userRole !== UserRole.ADMIN) {
+      logger.log('감사글 활성화 상태 변경 권한이 없습니다.');
+      return false;
+    }
+
+    const updatedThanks = await this.thanksRepository.update(thanksId, {
+      isActive,
+    });
+
+    if (!updatedThanks.affected) {
+      logger.log('감사글 활성화 상태 변경에 실패하였습니다.');
+      return false;
+    }
+
+    logger.log('감사글 활성화 상태 변경이 완료되었습니다.');
+
+    return true;
+  }
+
+  async updateReportThanks(user: User, thanksId: number): Promise<boolean> {
+    logger.log('===== thanks.service.updateReportThanks =====');
+
+    const target = await this.getThanks(thanksId);
+
+    if (!target) {
+      logger.log('감사글이 존재하지 않습니다.');
+      return false;
+    }
+
+    if (target.reports.some(report => report.id === user.id)) {
+      logger.log('이미 신고한 감사글입니다.');
+      return false;
+    }
+
+    const updatedThanks = await this.thanksRepository.update(thanksId, {
+      reports: [...target.reports, user],
+    });
+
+    if (!updatedThanks.affected) {
+      logger.log('감사글 신고 업데이트에 실패하였습니다.');
+      return false;
+    }
+
+    logger.log('감사글 신고 업데이트가 완료되었습니다.');
+
+    return true;
+  }
+
   async changeReactionsCount(
     id: number,
     type: ReactionType,
@@ -232,7 +288,7 @@ export class ThanksService {
    */
 
   async cursorPaginateThanks(
-    type: 'all' | 'my',
+    type: 'all' | 'my' | 'inactive',
     take: number,
     cursor: number,
     order: 'ASC' | 'DESC' = 'ASC',
@@ -285,7 +341,7 @@ export class ThanksService {
 
   composeQueryBuilder<T extends BaseModel>(
     repo: Repository<T>,
-    type: 'all' | 'my',
+    type: 'all' | 'my' | 'inactive',
     cursor: number,
     order: 'ASC' | 'DESC' = 'ASC',
     userId: number,
@@ -306,6 +362,14 @@ export class ThanksService {
 
       if (type === 'my') {
         queryBuilder.andWhere('writer.id = :userId', { userId });
+      } else if (type === 'inactive') {
+        queryBuilder.andWhere('thanks.isActive = :isActive', {
+          isActive: false,
+        });
+      } else {
+        queryBuilder.andWhere('thanks.isActive = :isActive', {
+          isActive: true,
+        });
       }
     }
 
