@@ -123,12 +123,13 @@ export class CardService {
   }
 
   async getCards(
+    type: 'all' | 'inactive' = 'all',
     take: number,
     cursor: number,
   ): Promise<{ list: Card[]; cursor: number }> {
     logger.log('===== card.service.getCards =====');
 
-    const cards = await this.cursorPaginateCard('all', take, cursor);
+    const cards = await this.cursorPaginateCard(type, take, cursor);
 
     if (!cards.list.length) {
       logger.log(`카드가 존재하지 않습니다.`);
@@ -491,7 +492,7 @@ export class CardService {
   }
 
   async cursorPaginateCard(
-    type: 'all' | 'my' | 'tag' | 'search',
+    type: 'all' | 'my' | 'tag' | 'search' | 'inactive',
     take: number,
     cursor: number,
     keyword?: string,
@@ -517,6 +518,7 @@ export class CardService {
         'card.content',
         'card.isAnonymity',
         'card.isAnswered',
+        'card.isActive',
         'tags.id',
         'tags.keyword',
         'writer.id',
@@ -538,7 +540,7 @@ export class CardService {
 
   composeQueryBuilder<T extends BaseModel>(
     repo: Repository<T>,
-    type: 'all' | 'my' | 'search' | 'tag',
+    type: 'all' | 'my' | 'search' | 'tag' | 'inactive',
     cursor: number,
     isAnswered?: boolean,
     keyword?: string,
@@ -566,9 +568,13 @@ export class CardService {
         cursor,
       });
 
-      if (type !== 'my') {
+      if (type !== 'my' && type !== 'inactive') {
         queryBuilder.andWhere('card.isActive = :isActive', {
           isActive: true,
+        });
+      } else if (type === 'inactive') {
+        queryBuilder.andWhere('card.isActive = :isActive', {
+          isActive: false,
         });
       }
     }

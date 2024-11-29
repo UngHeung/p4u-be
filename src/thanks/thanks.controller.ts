@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -31,7 +32,7 @@ export class ThanksController {
   @UseGuards(AccessTokenGuard)
   getThanksList(
     @Req() req,
-    @Query('type') type: 'all' | 'my',
+    @Query('type') type: 'all' | 'my' | 'inactive',
     @Query('take', ParseIntPipe) take: number,
     @Query('cursor', ParseIntPipe) cursor: number,
   ): Promise<{ list: Thanks[]; cursor: number }> {
@@ -52,6 +53,34 @@ export class ThanksController {
     @Body() dto: UpdateThanksDto,
   ): Promise<Thanks> {
     return this.thanksService.updateThanks(req.user.id, id, dto);
+  }
+
+  @Patch(':id/active')
+  @UseGuards(AccessTokenGuard)
+  toggleThanksActive(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('isActive') isActive: boolean,
+  ): Promise<boolean> {
+    return this.thanksService.toggleThanksActive(req.user.id, id, isActive);
+  }
+
+  @Patch(':id/report')
+  @UseGuards(AccessTokenGuard)
+  updateReportThanks(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<boolean> {
+    return this.thanksService.updateReportThanks(req.user, id);
+  }
+
+  @Patch(':id/report/reset')
+  @UseGuards(AccessTokenGuard)
+  resetReportThanks(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<boolean> {
+    return this.thanksService.resetReportThanks(req.user, id);
   }
 
   @Delete(':id')
