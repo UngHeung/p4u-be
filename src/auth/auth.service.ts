@@ -8,12 +8,18 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from 'src/user/entity/user.entity';
 import { UserRole } from 'src/user/enum/userRole.enum';
 import { UserService } from 'src/user/user.service';
+import { Repository } from 'typeorm';
+import { RequestPasswordResetDto } from './dto/request-reset-password.dto';
 import { SignInDto } from './dto/signIn.dto';
 import { SignUpDto } from './dto/signUp.dto';
+import { VerifyPasswordResetDto } from './dto/verify-password.dto';
+import { EmailService } from './email.service';
+import { ResetCode } from './entity/reset-code.dto';
 
 const logger = new Logger();
 
@@ -27,7 +33,10 @@ export class AuthService {
   constructor(
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
+    @InjectRepository(ResetCode)
+    private readonly resetCodeRepository: Repository<ResetCode>,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   async registerUser(dto: SignUpDto): Promise<User> {
@@ -239,6 +248,68 @@ export class AuthService {
     }
 
     logger.log(`${user.id} - 관리자 권한이 확인되었습니다.`);
+    return true;
+  }
+
+  /**
+   * email
+   */
+
+  async requestPasswordReset(dto: RequestPasswordResetDto) {
+    const user = await this.userService.getUserByAccount(dto.account);
+
+    if (!user) {
+      logger.warn('유저가 존재하지 않습니다.');
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    const code = Math.floor(Math.random() * 1000000).toString();
+
+    const resetCode = await this.resetCodeRepository.save({
+      account: user.account,
+      email: user.email,
+      code,
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+    });
+
+    return this.emailService.sendPasswordResetEmail({
+      ...dto,
+      resetCode: resetCode.code,
+    });
+  }
+
+  async verifyPasswordReset(dto: VerifyPasswordResetDto) {
+    const user = await this.userService.getUserByAccount(dto.account);
+
+    if (!user) {
+      logger.warn('유저가 존재하지 않습니다.');
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    const resetCode = await this.resetCodeRepository.findOneBy({
+      code: dto.resetCode,
+    });
+
+    if (resetCode.account !== user.account) {
+      logger.warn('인증 코드가 일치하지 않습니다.');
+      throw new UnauthorizedException('인증 코드가 일치하지 않습니다.');
+    }
+
+    if (!resetCode) {
+      logger.warn('만료된 인증 코드입니다.');
+      throw new UnauthorizedException('만료된 인증 코드입니다.');
+    }
+
+    await this.userService.updatePassword(
+      user,
+      {
+        newPassword: dto.newPassword,
+      },
+      true,
+    );
+
+    logger.log(`${user.id} - 비밀번호 재설정이 완료되었습니다.`);
+
     return true;
   }
 }

@@ -9,7 +9,9 @@ import {
 } from '@nestjs/common';
 import { User } from 'src/user/entity/user.entity';
 import { AuthService } from './auth.service';
+import { RequestPasswordResetDto } from './dto/request-reset-password.dto';
 import { SignUpDto } from './dto/signUp.dto';
+import { VerifyPasswordResetDto } from './dto/verify-password.dto';
 import { BasicTokenGuard } from './guards/basic-token.guard';
 import {
   AccessTokenGuard,
@@ -67,5 +69,19 @@ export class AuthController {
   @UseGuards(AccessTokenGuard)
   checkAdmin(@Req() req): Promise<boolean> {
     return this.authService.checkAdmin(req.user.id);
+  }
+
+  /**
+   * email
+   */
+
+  @Post('password-reset/request')
+  requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+    return this.authService.requestPasswordReset(dto);
+  }
+
+  @Post('password-reset/verify')
+  verifyPasswordReset(@Body() dto: VerifyPasswordResetDto) {
+    return this.authService.verifyPasswordReset(dto);
   }
 }
