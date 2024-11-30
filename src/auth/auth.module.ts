@@ -5,17 +5,19 @@ import { User } from 'src/user/entity/user.entity';
 import { UserModule } from 'src/user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { EmailService } from './email.service';
+import { ResetCode } from './entity/reset-code.dto';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, ResetCode]),
     forwardRef(() => UserModule),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
     }),
   ],
-  exports: [AuthService],
+  exports: [AuthService, JwtModule],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, EmailService],
 })
 export class AuthModule {}
