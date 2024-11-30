@@ -1,6 +1,8 @@
 import {
   ConflictException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -11,6 +13,7 @@ import * as bcrypt from 'bcryptjs';
 import { AuthService } from 'src/auth/auth.service';
 import { SignUpDto } from 'src/auth/dto/signUp.dto';
 import { Repository } from 'typeorm';
+import { UpdateUserEmailDto } from './dto/update-user-email.dto';
 import { UpdateUserNameDto } from './dto/update-user-name.dto';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { User } from './entity/user.entity';
@@ -23,6 +26,7 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
   ) {}
 
@@ -95,6 +99,7 @@ export class UserService {
         'user.account',
         'user.userRole',
         'user.password',
+        'user.email',
       ])
       .getOne();
 
@@ -107,8 +112,17 @@ export class UserService {
     return user;
   }
 
-  async updatePassword(user: User, dto: UpdateUserPasswordDto): Promise<User> {
+  async updatePassword(
+    user: User,
+    dto: UpdateUserPasswordDto,
+    isReset = false,
+  ): Promise<User> {
     logger.log('===== user.service.updatePassword =====');
+
+    if (!dto.password && !isReset) {
+      logger.warn(`${user.id} - 비밀번호가 존재하지 않습니다.`);
+      throw new NotFoundException('비밀번호가 존재하지 않습니다.');
+    }
 
     const targetUser = await this.userRepository
       .createQueryBuilder('user')
@@ -121,14 +135,16 @@ export class UserService {
       throw new NotFoundException('유저가 존재하지 않습니다.');
     }
 
-    const isPasswordCorrect = await this.comparePassword(
-      dto.password,
-      targetUser.password,
-    );
+    if (!isReset) {
+      const isPasswordCorrect = await this.comparePassword(
+        dto.password,
+        targetUser.password,
+      );
 
-    if (!isPasswordCorrect) {
-      logger.warn(`${user.id} - 비밀번호가 일치하지 않습니다.`);
-      throw new UnauthorizedException('비밀번호가 일치하지 않습니다.');
+      if (!isPasswordCorrect) {
+        logger.warn(`${user.id} - 비밀번호가 일치하지 않습니다.`);
+        throw new UnauthorizedException('비밀번호가 일치하지 않습니다.');
+      }
     }
 
     const newPassword = await this.authService.encodePassword(dto.newPassword);
@@ -161,6 +177,24 @@ export class UserService {
     await this.userRepository.save(targetUser);
 
     logger.log(`${user.id} - 이름이 변경되었습니다.`);
+
+    return targetUser;
+  }
+
+  async updateEmail(user: User, dto: UpdateUserEmailDto): Promise<User> {
+    logger.log('===== user.service.updateEmail =====');
+
+    const targetUser = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id: user.id })
+      .select(['user.id', 'user.email'])
+      .getOne();
+
+    targetUser.email = dto.email;
+
+    await this.userRepository.save(targetUser);
+
+    logger.log(`${user.id} - 이메일이 변경되었습니다.`);
 
     return targetUser;
   }

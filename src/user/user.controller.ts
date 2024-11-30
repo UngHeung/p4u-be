@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AccessTokenGuard } from 'src/auth/guards/bearer-token.guard';
+import { UpdateUserEmailDto } from './dto/update-user-email.dto';
 import { UpdateUserNameDto } from './dto/update-user-name.dto';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { User } from './entity/user.entity';
@@ -37,6 +38,12 @@ export class UserController {
   @UseGuards(AccessTokenGuard)
   updateName(@Req() req, @Body() body: UpdateUserNameDto): Promise<User> {
     return this.userService.updateName(req.user, body);
+  }
+
+  @Patch('update/email')
+  @UseGuards(AccessTokenGuard)
+  updateEmail(@Req() req, @Body() body: UpdateUserEmailDto): Promise<User> {
+    return this.userService.updateEmail(req.user, body);
   }
 
   @Patch('activate')
