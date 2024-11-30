@@ -192,6 +192,10 @@ export class UserService {
 
     targetUser.email = dto.email;
 
+    if (!targetUser.emailVerified) {
+      targetUser.emailVerified = true;
+    }
+
     await this.userRepository.save(targetUser);
 
     logger.log(`${user.id} - 이메일이 변경되었습니다.`);

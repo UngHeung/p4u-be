@@ -61,6 +61,10 @@ export class User extends BaseModel {
   @IsBoolean()
   isActivate: boolean;
 
+  @Column({ nullable: false, default: false })
+  @IsBoolean()
+  emailVerified: boolean;
+
   @OneToMany(() => Card, card => card.writer)
   cards: Card[];
 
