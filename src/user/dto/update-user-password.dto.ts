@@ -1,9 +1,9 @@
 import { IsString } from 'class-validator';
 import { User } from '../entity/user.entity';
 
-export class UpdateUserPasswordDto implements Partial<User> {
+export class UpdateUserPasswordDto {
   @IsString()
-  password: string;
+  password?: string;
 
   @IsString()
   newPassword: string;

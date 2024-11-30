@@ -1,4 +1,11 @@
-import { IsBoolean, IsEnum, IsString, Length, Matches } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsString,
+  Length,
+  Matches,
+} from 'class-validator';
 import { Card } from 'src/card/entity/card.entity';
 import { BaseModel } from 'src/common/entity/base.entity';
 import { lengthValidationMessage } from 'src/common/validation/message/length-validation.message';
@@ -42,6 +49,10 @@ export class User extends BaseModel {
   })
   password: string;
 
+  @Column({ nullable: true })
+  @IsEmail()
+  email: string;
+
   @Column({ nullable: false, default: UserRole.USER })
   @IsEnum(UserRole)
   userRole: UserRole;
@@ -49,6 +60,10 @@ export class User extends BaseModel {
   @Column({ nullable: false, default: true })
   @IsBoolean()
   isActivate: boolean;
+
+  @Column({ nullable: false, default: false })
+  @IsBoolean()
+  emailVerified: boolean;
 
   @OneToMany(() => Card, card => card.writer)
   cards: Card[];
