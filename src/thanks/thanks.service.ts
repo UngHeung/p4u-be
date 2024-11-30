@@ -182,7 +182,7 @@ export class ThanksService {
 
     if (user.userRole !== UserRole.ADMIN) {
       logger.log('감사글 활성화 상태 변경 권한이 없습니다.');
-      return false;
+      throw new ForbiddenException('감사글 활성화 상태 변경 권한이 없습니다.');
     }
 
     const target = await this.getThanks(thanksId);
@@ -236,7 +236,7 @@ export class ThanksService {
 
       logger.log('감사글 신고 업데이트가 완료되었습니다.');
 
-      if (target.reports.length >= 3) {
+      if (target.reports.length >= 5) {
         const result = await this.changeActiveThanks(user, target, false);
 
         if (!result) {
@@ -324,23 +324,27 @@ export class ThanksService {
     return true;
   }
 
-  async deleteThanks(userId: number, id: number): Promise<boolean> {
+  async deleteThanks(user: User, id: number): Promise<boolean> {
     logger.log('===== thanks.service.deleteThanks =====');
 
-    const existingThanks = await this.thanksRepository.findOne({
-      where: { id, writer: { id: userId } },
-    });
+    const existingThanks = await this.thanksRepository
+      .createQueryBuilder('thanks')
+      .leftJoin('thanks.writer', 'writer')
+      .where('thanks.id = :id', { id })
+      .andWhere('writer.id = :userId', { userId: user.id })
+      .select(['thanks.id', 'writer.id'])
+      .getOne();
 
-    if (!existingThanks) {
+    if (user.userRole !== UserRole.ADMIN && !existingThanks) {
       logger.log('권한이 없거나 감사글이 존재하지 않습니다.');
-      return false;
+      throw new NotFoundException('권한이 없거나 감사글이 존재하지 않습니다.');
     }
 
     const deletedThanks = await this.thanksRepository.delete(id);
 
     if (deletedThanks.affected === 0) {
-      logger.log('감사글이 존재하지 않습니다.');
-      return false;
+      logger.log('감사글 삭제에 실패하였습니다.');
+      throw new NotFoundException('감사글 삭제에 실패하였습니다.');
     }
 
     logger.log('감사글 삭제가 완료되었습니다.');
@@ -354,19 +358,18 @@ export class ThanksService {
   ): Promise<boolean> {
     logger.log('===== thanks.service.changeActiveThanks =====');
 
-    if (user.userRole !== UserRole.ADMIN) {
+    if (user.userRole !== UserRole.ADMIN && isActive) {
       logger.log('감사글 활성화 상태 변경 권한이 없습니다.');
-      return false;
+      throw new ForbiddenException('감사글 활성화 상태 변경 권한이 없습니다.');
     }
 
-    const updatedThanks = await this.thanksRepository.update(thanks.id, {
-      isActive: !thanks.isActive,
-    });
-
-    if (!updatedThanks.affected) {
-      logger.log('감사글 활성화 상태 변경에 실패하였습니다.');
-      return false;
+    if (isActive) {
+      thanks.isActive = true;
+    } else {
+      thanks.isActive = false;
     }
+
+    await this.thanksRepository.save(thanks);
 
     logger.log('감사글 활성화 상태 변경이 완료되었습니다.');
 

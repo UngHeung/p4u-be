@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseBoolPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -60,9 +61,9 @@ export class ThanksController {
   toggleThanksActive(
     @Req() req,
     @Param('id', ParseIntPipe) id: number,
-    @Param('isActive') isActive: boolean,
+    @Query('isActive', ParseBoolPipe) isActive: boolean,
   ): Promise<boolean> {
-    return this.thanksService.toggleThanksActive(req.user.id, id, isActive);
+    return this.thanksService.toggleThanksActive(req.user, id, isActive);
   }
 
   @Patch(':id/report')
@@ -89,6 +90,6 @@ export class ThanksController {
     @Req() req,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<boolean> {
-    return this.thanksService.deleteThanks(req.user.id, id);
+    return this.thanksService.deleteThanks(req.user, id);
   }
 }
