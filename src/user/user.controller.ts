@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -8,6 +9,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AccessTokenGuard } from 'src/auth/guards/bearer-token.guard';
+import { UpdateUserNameDto } from './dto/update-user-name.dto';
+import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { User } from './entity/user.entity';
 import { UserService } from './user.service';
 
@@ -19,6 +22,21 @@ export class UserController {
   @UseGuards(AccessTokenGuard)
   getUserById(@Req() req): Promise<User> {
     return this.userService.getUserById(req.user.id);
+  }
+
+  @Patch('update/password')
+  @UseGuards(AccessTokenGuard)
+  updatePassword(
+    @Req() req,
+    @Body() body: UpdateUserPasswordDto,
+  ): Promise<User> {
+    return this.userService.updatePassword(req.user, body);
+  }
+
+  @Patch('update/name')
+  @UseGuards(AccessTokenGuard)
+  updateName(@Req() req, @Body() body: UpdateUserNameDto): Promise<User> {
+    return this.userService.updateName(req.user, body);
   }
 
   @Patch('activate')
