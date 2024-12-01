@@ -256,11 +256,17 @@ export class AuthService {
    */
 
   async requestPasswordReset(dto: RequestPasswordResetDto) {
+    logger.log('===== auth.service.requestPasswordReset =====');
     const user = await this.userService.getUserByAccount(dto.account);
 
     if (!user) {
       logger.warn('유저가 존재하지 않습니다.');
       throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    if (user.email !== dto.email) {
+      logger.warn('이메일이 일치하지 않습니다.');
+      throw new UnauthorizedException('이메일이 일치하지 않습니다.');
     }
 
     const code = Math.floor(Math.random() * 1000000).toString();
@@ -272,13 +278,17 @@ export class AuthService {
       expiresAt: new Date(Date.now() + 30 * 60 * 1000),
     });
 
-    return this.emailService.sendPasswordResetEmail({
+    const result = await this.emailService.sendPasswordResetEmail({
       ...dto,
       resetCode: resetCode.code,
     });
+
+    return result;
   }
 
   async verifyPasswordReset(dto: VerifyPasswordResetDto) {
+    logger.log('===== auth.service.verifyPasswordReset =====');
+
     const user = await this.userService.getUserByAccount(dto.account);
 
     if (!user) {
@@ -290,12 +300,22 @@ export class AuthService {
       code: dto.resetCode,
     });
 
+    if (!resetCode) {
+      logger.warn('인증 코드가 존재하지 않습니다.');
+      throw new UnauthorizedException('인증 코드가 존재하지 않습니다.');
+    }
+
     if (resetCode.account !== user.account) {
       logger.warn('인증 코드가 일치하지 않습니다.');
       throw new UnauthorizedException('인증 코드가 일치하지 않습니다.');
     }
 
-    if (!resetCode) {
+    if (resetCode.email !== user.email) {
+      logger.warn('이메일이 일치하지 않습니다.');
+      throw new UnauthorizedException('이메일이 일치하지 않습니다.');
+    }
+
+    if (resetCode.expiresAt < new Date()) {
       logger.warn('만료된 인증 코드입니다.');
       throw new UnauthorizedException('만료된 인증 코드입니다.');
     }
