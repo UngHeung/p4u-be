@@ -17,7 +17,6 @@ import { ResetCode } from 'src/auth/entity/reset-code.dto';
 import { Repository } from 'typeorm';
 import { RequestEmailCodeDto } from './dto/request-email-code.dto';
 import { UpdateUserEmailDto } from './dto/update-user-email.dto';
-import { UpdateUserNameDto } from './dto/update-user-name.dto';
 import { UpdateUserNicknameDto } from './dto/update-user-nickname.dto';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -169,7 +168,11 @@ export class UserService {
 
     targetUser.password = newPassword;
 
-    await this.userRepository.save(targetUser);
+    await this.userRepository.save({
+      ...targetUser,
+      email: user.email,
+      emailVerified: user.emailVerified,
+    });
 
     logger.log(`${user.id} - 비밀번호가 변경되었습니다.`);
 
@@ -217,6 +220,29 @@ export class UserService {
     await this.userRepository.save(targetUser);
 
     logger.log(`${user.id} - 이메일이 변경되었습니다.`);
+
+    return targetUser;
+  }
+
+  async updateUser(user: User, dto: UpdateUserDto): Promise<User> {
+    logger.log('===== user.service.updateUser =====');
+
+    const targetUser = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id: user.id })
+      .select(['user.id', 'user.nickname', 'user.email'])
+      .getOne();
+
+    if (!targetUser) {
+      logger.warn(`${user.id} - 유저가 존재하지 않습니다.`);
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    Object.assign(targetUser, dto);
+
+    await this.userRepository.save(targetUser);
+
+    logger.log(`${user.id} - 유저 정보가 변경되었습니다.`);
 
     return targetUser;
   }

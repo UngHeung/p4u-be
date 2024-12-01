@@ -264,7 +264,7 @@ export class AuthService {
       throw new NotFoundException('유저가 존재하지 않습니다.');
     }
 
-    if (user.email !== dto.email) {
+    if (user.emailVerified && user.email !== dto.email) {
       logger.warn('이메일이 일치하지 않습니다.');
       throw new UnauthorizedException('이메일이 일치하지 않습니다.');
     }
@@ -272,8 +272,8 @@ export class AuthService {
     const code = Math.floor(Math.random() * 1000000).toString();
 
     const resetCode = await this.resetCodeRepository.save({
-      account: user.account,
-      email: user.email,
+      account: dto.account,
+      email: dto.email,
       code,
       expiresAt: new Date(Date.now() + 30 * 60 * 1000),
     });
@@ -310,7 +310,7 @@ export class AuthService {
       throw new UnauthorizedException('인증 코드가 일치하지 않습니다.');
     }
 
-    if (resetCode.email !== user.email) {
+    if (user.emailVerified && resetCode.email !== user.email) {
       logger.warn('이메일이 일치하지 않습니다.');
       throw new UnauthorizedException('이메일이 일치하지 않습니다.');
     }
@@ -322,13 +322,12 @@ export class AuthService {
 
     user.emailVerified = true;
 
-    await this.userService.updatePassword(
-      user,
-      {
-        newPassword: dto.newPassword,
-      },
-      true,
-    );
+    await this.userService.updateUser(user, {
+      email: dto.email,
+      password: await this.encodePassword(dto.newPassword),
+    });
+
+    await this.resetCodeRepository.delete(resetCode.id);
 
     logger.log(`${user.id} - 비밀번호 재설정이 완료되었습니다.`);
 

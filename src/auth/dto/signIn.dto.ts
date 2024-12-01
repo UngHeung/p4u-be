@@ -1,4 +1,10 @@
-import { PickType } from '@nestjs/mapped-types';
-import { User } from 'src/user/entity/user.entity';
+import { IsString } from 'class-validator';
+import { stringValidationMessage } from 'src/common/validation/message/type-validation.message';
 
-export class SignInDto extends PickType(User, ['account', 'password']) {}
+export class SignInDto {
+  @IsString({ message: stringValidationMessage })
+  account: string;
+
+  @IsString({ message: stringValidationMessage })
+  password: string;
+}
