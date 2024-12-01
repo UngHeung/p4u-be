@@ -49,7 +49,7 @@ export class User extends BaseModel {
   })
   password: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   @IsEmail()
   email: string;
 
