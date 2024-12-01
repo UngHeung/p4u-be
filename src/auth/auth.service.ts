@@ -322,13 +322,12 @@ export class AuthService {
 
     user.emailVerified = true;
 
-    await this.userService.updatePassword(
-      user,
-      {
-        newPassword: dto.newPassword,
-      },
-      true,
-    );
+    await this.userService.updateUser(user, {
+      email: dto.email,
+      password: dto.newPassword,
+    });
+
+    await this.resetCodeRepository.delete(resetCode.id);
 
     logger.log(`${user.id} - 비밀번호 재설정이 완료되었습니다.`);
 
