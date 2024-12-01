@@ -9,3 +9,8 @@ export const numberValidationMessage = (args: ValidationArguments) => {
   const { property } = args;
   return `${property} 타입은 number입니다.`;
 };
+
+export const emailValidationMessage = (args: ValidationArguments) => {
+  const { property } = args;
+  return `${property} 타입은 email입니다.`;
+};
