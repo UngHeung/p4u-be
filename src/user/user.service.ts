@@ -1,13 +1,27 @@
 import {
   ConflictException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcryptjs';
+import { AuthService } from 'src/auth/auth.service';
 import { SignUpDto } from 'src/auth/dto/signUp.dto';
+import { EmailService } from 'src/auth/email.service';
+import { ResetCode } from 'src/auth/entity/reset-code.dto';
 import { Repository } from 'typeorm';
+import { RequestEmailCodeDto } from './dto/request-email-code.dto';
+import { UpdateUserEmailDto } from './dto/update-user-email.dto';
+import { UpdateUserNameDto } from './dto/update-user-name.dto';
+import { UpdateUserNicknameDto } from './dto/update-user-nickname.dto';
+import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { User } from './entity/user.entity';
 import { UserRole } from './enum/userRole.enum';
 
@@ -18,6 +32,11 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @Inject(forwardRef(() => AuthService))
+    private readonly authService: AuthService,
+    @InjectRepository(ResetCode)
+    private readonly resetCodeRepository: Repository<ResetCode>,
+    private readonly emailService: EmailService,
   ) {}
 
   async createUser(dto: SignUpDto) {
@@ -47,7 +66,16 @@ export class UserService {
     const user = await this.userRepository
       .createQueryBuilder('user')
       .where('user.id = :id', { id })
-      .select(['user.id', 'user.name', 'user.userRole', 'user.createdAt'])
+      .select([
+        'user.id',
+        'user.name',
+        'user.account',
+        'user.nickname',
+        'user.email',
+        'user.emailVerified',
+        'user.userRole',
+        'user.createdAt',
+      ])
       .getOne();
 
     if (!user) {
@@ -89,6 +117,7 @@ export class UserService {
         'user.account',
         'user.userRole',
         'user.password',
+        'user.email',
       ])
       .getOne();
 
@@ -99,6 +128,97 @@ export class UserService {
 
     logger.log(`${account} - 유저 반환이 완료되었습니다.`);
     return user;
+  }
+
+  async updatePassword(
+    user: User,
+    dto: UpdateUserPasswordDto,
+    isReset = false,
+  ): Promise<User> {
+    logger.log('===== user.service.updatePassword =====');
+
+    if (!dto.password && !isReset) {
+      logger.warn(`${user.id} - 비밀번호가 존재하지 않습니다.`);
+      throw new NotFoundException('비밀번호가 존재하지 않습니다.');
+    }
+
+    const targetUser = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id: user.id })
+      .select(['user.id', 'user.password'])
+      .getOne();
+
+    if (!targetUser) {
+      logger.warn(`${user.id} - 유저가 존재하지 않습니다.`);
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    if (!isReset) {
+      const isPasswordCorrect = await this.comparePassword(
+        dto.password,
+        targetUser.password,
+      );
+
+      if (!isPasswordCorrect) {
+        logger.warn(`${user.id} - 비밀번호가 일치하지 않습니다.`);
+        throw new UnauthorizedException('비밀번호가 일치하지 않습니다.');
+      }
+    }
+
+    const newPassword = await this.authService.encodePassword(dto.newPassword);
+
+    targetUser.password = newPassword;
+
+    await this.userRepository.save(targetUser);
+
+    logger.log(`${user.id} - 비밀번호가 변경되었습니다.`);
+
+    return targetUser;
+  }
+
+  async updateNickname(user: User, dto: UpdateUserNicknameDto): Promise<User> {
+    logger.log('===== user.service.updateNickname =====');
+
+    const targetUser = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id: user.id })
+      .select(['user.id', 'user.nickname'])
+      .getOne();
+
+    if (!targetUser) {
+      logger.warn(`${user.id} - 유저가 존재하지 않습니다.`);
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    targetUser.nickname = dto.nickname;
+
+    await this.userRepository.save(targetUser);
+
+    logger.log(`${user.id} - 닉네임이 변경되었습니다.`);
+
+    return targetUser;
+  }
+
+  async updateEmail(user: User, dto: UpdateUserEmailDto): Promise<User> {
+    logger.log('===== user.service.updateEmail =====');
+
+    const targetUser = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id: user.id })
+      .select(['user.id', 'user.email'])
+      .getOne();
+
+    targetUser.email = dto.email;
+
+    if (!targetUser.emailVerified) {
+      targetUser.emailVerified = true;
+    }
+
+    await this.userRepository.save(targetUser);
+
+    logger.log(`${user.id} - 이메일이 변경되었습니다.`);
+
+    return targetUser;
   }
 
   async toggleActivateUser(id: number): Promise<User> {
@@ -167,6 +287,69 @@ export class UserService {
     }
   }
 
+  async requestEmailVerificationCode(userId: number, dto: RequestEmailCodeDto) {
+    logger.log('===== user.service.requestEmailVerificationCode =====');
+
+    const user = await this.getUserById(userId);
+
+    if (!user) {
+      logger.warn(`${userId} - 유저가 존재하지 않습니다.`);
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+
+    const code = Math.floor(Math.random() * 1000000).toString();
+
+    await this.resetCodeRepository.save({
+      account: user.account,
+      email: dto.email,
+      code,
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+    });
+
+    logger.log(`${dto.email} - 이메일 인증 코드가 생성되었습니다.`);
+
+    const result = await this.emailService.sendEmailVerificationCode({
+      email: dto.email,
+      code,
+    });
+
+    logger.log(`${dto.email} - 이메일 인증 코드가 발송되었습니다.`);
+
+    return result;
+  }
+
+  async verifyEmailCode(user: User, dto: VerifyEmailDto) {
+    logger.log('===== user.service.verifyEmailCode =====');
+
+    const verifyCode = await this.resetCodeRepository.findOneBy({
+      code: dto.code,
+    });
+
+    if (!verifyCode) {
+      logger.warn(`${dto.code} - 인증 코드가 존재하지 않습니다.`);
+      throw new NotFoundException('인증 코드가 존재하지 않습니다.');
+    }
+
+    if (verifyCode.email !== dto.email) {
+      logger.warn(`${dto.code} - 인증 코드가 일치하지 않습니다.`);
+      throw new UnauthorizedException('인증 코드가 일치하지 않습니다.');
+    }
+
+    if (verifyCode.expiresAt < new Date()) {
+      logger.warn(`${dto.code} - 만료된 인증 코드입니다.`);
+      throw new UnauthorizedException('만료된 인증 코드입니다.');
+    }
+
+    user.email = dto.email;
+    user.emailVerified = true;
+
+    await this.userRepository.save(user);
+
+    logger.log(`${dto.email} - 이메일 인증 코드가 요청되었습니다.`);
+
+    return true;
+  }
+
   //
   async existsUser(account: string) {
     logger.log('===== user.service.existsUser =====');
@@ -180,5 +363,17 @@ export class UserService {
     );
 
     return isExists;
+  }
+
+  async comparePassword(password: string, targetPassword: string) {
+    logger.log('===== user.service.comparePassword =====');
+
+    const isPasswordCorrect = await bcrypt.compare(password, targetPassword);
+
+    logger.log(
+      `${password} - ${isPasswordCorrect ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.'}`,
+    );
+
+    return isPasswordCorrect;
   }
 }
