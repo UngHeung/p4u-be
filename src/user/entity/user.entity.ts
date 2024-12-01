@@ -9,7 +9,10 @@ import {
 import { Card } from 'src/card/entity/card.entity';
 import { BaseModel } from 'src/common/entity/base.entity';
 import { lengthValidationMessage } from 'src/common/validation/message/length-validation.message';
-import { stringValidationMessage } from 'src/common/validation/message/type-validation.message';
+import {
+  emailValidationMessage,
+  stringValidationMessage,
+} from 'src/common/validation/message/type-validation.message';
 import { Reaction } from 'src/thanks/entity/reaction.entity';
 import { Thanks } from 'src/thanks/entity/thanks.entity';
 import { Column, Entity, ManyToMany, OneToMany } from 'typeorm';
@@ -32,6 +35,11 @@ export class User extends BaseModel {
   })
   name: string;
 
+  @Column({ nullable: true, unique: true })
+  @Length(2, 6, { message: lengthValidationMessage })
+  @IsString({ message: stringValidationMessage })
+  nickname: string;
+
   @Column({ nullable: false, unique: true })
   @Length(6, 12, { message: lengthValidationMessage })
   @IsString({ message: stringValidationMessage })
@@ -49,8 +57,11 @@ export class User extends BaseModel {
   })
   password: string;
 
-  @Column({ nullable: true })
-  @IsEmail()
+  @Column({ nullable: true, unique: true })
+  @IsEmail({}, { message: emailValidationMessage })
+  @Matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/g, {
+    message: emailValidationMessage,
+  })
   email: string;
 
   @Column({ nullable: false, default: UserRole.USER })
