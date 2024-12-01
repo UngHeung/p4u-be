@@ -320,6 +320,8 @@ export class AuthService {
       throw new UnauthorizedException('만료된 인증 코드입니다.');
     }
 
+    user.emailVerified = true;
+
     await this.userService.updatePassword(
       user,
       {
