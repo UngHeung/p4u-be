@@ -324,7 +324,7 @@ export class AuthService {
 
     await this.userService.updateUser(user, {
       email: dto.email,
-      password: dto.newPassword,
+      password: await this.encodePassword(dto.newPassword),
     });
 
     await this.resetCodeRepository.delete(resetCode.id);
