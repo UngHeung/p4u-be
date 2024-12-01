@@ -41,4 +41,27 @@ export class EmailService {
 
     return this.transporter.sendMail(mailOptions);
   }
+
+  async sendEmailVerificationCode({
+    email,
+    code,
+  }: {
+    email: string;
+    code: string;
+  }) {
+    const mailOptions = {
+      from: process.env.SMTP_ID,
+      to: email,
+      subject: '이메일 인증 코드',
+      html: `
+        <div style="padding: 20px; background-color: #f8f9fa; border-radius: 5px;">
+          <h1 style="color: #333;">이메일 인증</h1>
+          <p>아래의 인증 코드를 입력하여 이메일을 인증하세요:</p>
+          <h2 style="color: #007bff; letter-spacing: 3px;">${code}</h2>
+        </div>
+      `,
+    };
+
+    return this.transporter.sendMail(mailOptions);
+  }
 }
