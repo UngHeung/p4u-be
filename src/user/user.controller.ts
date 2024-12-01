@@ -4,14 +4,18 @@ import {
   Delete,
   Get,
   Patch,
+  Post,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { SentMessageInfo } from 'nodemailer';
 import { AccessTokenGuard } from 'src/auth/guards/bearer-token.guard';
+import { RequestEmailCodeDto } from './dto/request-email-code.dto';
 import { UpdateUserEmailDto } from './dto/update-user-email.dto';
-import { UpdateUserNameDto } from './dto/update-user-name.dto';
+import { UpdateUserNicknameDto } from './dto/update-user-nickname.dto';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { User } from './entity/user.entity';
 import { UserService } from './user.service';
 
@@ -34,10 +38,13 @@ export class UserController {
     return this.userService.updatePassword(req.user, body);
   }
 
-  @Patch('update/name')
+  @Patch('update/nickname')
   @UseGuards(AccessTokenGuard)
-  updateName(@Req() req, @Body() body: UpdateUserNameDto): Promise<User> {
-    return this.userService.updateName(req.user, body);
+  updateNickname(
+    @Req() req,
+    @Body() body: UpdateUserNicknameDto,
+  ): Promise<User> {
+    return this.userService.updateNickname(req.user, body);
   }
 
   @Patch('update/email')
@@ -68,5 +75,24 @@ export class UserController {
   @UseGuards(AccessTokenGuard)
   deleteUser(@Req() req): Promise<void> {
     return this.userService.deleteUser(req.user.id);
+  }
+
+  /**
+   * email
+   */
+
+  @Post('request/email')
+  @UseGuards(AccessTokenGuard)
+  requestEmailVerificationCode(
+    @Req() req,
+    @Body() body: RequestEmailCodeDto,
+  ): Promise<SentMessageInfo> {
+    return this.userService.requestEmailVerificationCode(req.user.id, body);
+  }
+
+  @Post('verify/email')
+  @UseGuards(AccessTokenGuard)
+  verifyEmailCode(@Req() req, @Body() body: VerifyEmailDto): Promise<boolean> {
+    return this.userService.verifyEmailCode(req.user, body);
   }
 }
