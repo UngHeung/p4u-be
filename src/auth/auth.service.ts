@@ -264,7 +264,7 @@ export class AuthService {
       throw new NotFoundException('유저가 존재하지 않습니다.');
     }
 
-    if (user.email !== dto.email) {
+    if (user.emailVerified && user.email !== dto.email) {
       logger.warn('이메일이 일치하지 않습니다.');
       throw new UnauthorizedException('이메일이 일치하지 않습니다.');
     }
