@@ -415,6 +415,8 @@ export class ThanksService {
         'thanks.isActive',
         'writer.id',
         'writer.name',
+        'writer.nickname',
+        'writer.isShowNickname',
         'reports.id',
         'reactions.id',
         'reactions.type',
