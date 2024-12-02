@@ -53,6 +53,12 @@ export class UserController {
     return this.userService.updateEmail(req.user, body);
   }
 
+  @Patch('toggle/nickname')
+  @UseGuards(AccessTokenGuard)
+  toggleShowNickname(@Req() req): Promise<User> {
+    return this.userService.toggleShowNickname(req.user);
+  }
+
   @Patch('activate')
   @UseGuards(AccessTokenGuard)
   toggleActivateUser(@Req() req): Promise<User> {

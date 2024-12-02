@@ -70,6 +70,7 @@ export class UserService {
         'user.name',
         'user.account',
         'user.nickname',
+        'user.isShowNickname',
         'user.email',
         'user.emailVerified',
         'user.userRole',
@@ -113,10 +114,10 @@ export class UserService {
       .select([
         'user.id',
         'user.name',
-        'user.account',
+        'user.nickname',
+        'user.isShowNickname',
         'user.userRole',
         'user.password',
-        'user.email',
       ])
       .getOne();
 
@@ -194,6 +195,7 @@ export class UserService {
     }
 
     targetUser.nickname = dto.nickname;
+    targetUser.isShowNickname = dto.isShowNickname;
 
     await this.userRepository.save(targetUser);
 
@@ -245,6 +247,25 @@ export class UserService {
     logger.log(`${user.id} - 유저 정보가 변경되었습니다.`);
 
     return targetUser;
+  }
+
+  async toggleShowNickname(
+    user: User,
+    isShowNickname?: boolean,
+  ): Promise<User> {
+    logger.log('===== user.service.toggleShowNickname =====');
+
+    if (isShowNickname) {
+      user.isShowNickname = isShowNickname;
+    } else {
+      user.isShowNickname = !user.isShowNickname;
+    }
+
+    await this.userRepository.save(user);
+
+    logger.log(`${user.id} - 닉네임 공개 여부가 변경되었습니다.`);
+
+    return user;
   }
 
   async toggleActivateUser(id: number): Promise<User> {
