@@ -126,8 +126,6 @@ export class TagService {
   async clearTag(user: User): Promise<DeleteResult[]> {
     logger.log(`===== tag.service.clearTag =====`);
 
-    console.log(user);
-
     if (user.userRole !== UserRole.ADMIN) {
       logger.warn(`${user.id} - 관리자 권한이 없습니다.`);
       throw new ForbiddenException('관리자 권한이 없습니다.');
