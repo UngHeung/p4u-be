@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   forwardRef,
   Inject,
@@ -303,22 +304,22 @@ export class AuthService {
 
     if (!resetCode) {
       logger.warn('인증 코드가 존재하지 않습니다.');
-      throw new UnauthorizedException('인증 코드가 존재하지 않습니다.');
+      throw new BadRequestException('인증 코드가 존재하지 않습니다.');
     }
 
     if (resetCode.account !== user.account) {
       logger.warn('인증 코드가 일치하지 않습니다.');
-      throw new UnauthorizedException('인증 코드가 일치하지 않습니다.');
+      throw new BadRequestException('인증 코드가 일치하지 않습니다.');
     }
 
     if (user.emailVerified && resetCode.email !== user.email) {
       logger.warn('이메일이 일치하지 않습니다.');
-      throw new UnauthorizedException('이메일이 일치하지 않습니다.');
+      throw new BadRequestException('이메일이 일치하지 않습니다.');
     }
 
     if (resetCode.expiresAt < new Date()) {
       logger.warn('만료된 인증 코드입니다.');
-      throw new UnauthorizedException('만료된 인증 코드입니다.');
+      throw new BadRequestException('만료된 인증 코드입니다.');
     }
 
     user.emailVerified = true;
