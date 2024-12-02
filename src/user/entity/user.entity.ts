@@ -40,6 +40,10 @@ export class User extends BaseModel {
   @IsString({ message: stringValidationMessage })
   nickname: string;
 
+  @Column({ nullable: false, default: false })
+  @IsBoolean()
+  isShowNickname: boolean;
+
   @Column({ nullable: false, unique: true })
   @Length(6, 12, { message: lengthValidationMessage })
   @IsString({ message: stringValidationMessage })

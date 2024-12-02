@@ -97,6 +97,8 @@ export class CardService {
         'tags.keyword',
         'writer.id',
         'writer.name',
+        'writer.nickname',
+        'writer.isShowNickname',
         'card.id',
         'card.title',
         'card.content',
@@ -523,6 +525,8 @@ export class CardService {
         'tags.keyword',
         'writer.id',
         'writer.name',
+        'writer.nickname',
+        'writer.isShowNickname',
         'pickers.id',
       ])
       .orderBy('card.id', 'DESC')

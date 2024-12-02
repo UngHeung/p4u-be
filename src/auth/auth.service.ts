@@ -105,7 +105,8 @@ export class AuthService {
     const payload = {
       sub: user.id,
       name: user.name,
-      account: user.account,
+      nickname: user.nickname,
+      isShowNickname: user.isShowNickname,
       userRole: user.userRole,
       type: isRefreshToken ? 'refresh' : 'access',
     };
