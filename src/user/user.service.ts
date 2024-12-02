@@ -113,9 +113,12 @@ export class UserService {
       .where('user.account = :account', { account })
       .select([
         'user.id',
+        'user.account',
         'user.name',
         'user.nickname',
         'user.isShowNickname',
+        'user.email',
+        'user.emailVerified',
         'user.userRole',
         'user.password',
       ])
